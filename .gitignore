@@ -1,0 +1,17 @@
+node_modules/
+pnpm-lock.yaml
+dist/
+**/dist/
+*.tsbuildinfo
+**/*.tsbuildinfo
+.DS_Store
+*.log
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+coverage/
+.tmp
+.env
+.env.local
+.env.*.local
