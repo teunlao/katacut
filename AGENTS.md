@@ -60,6 +60,7 @@
 - Write commit messages in this project in English.
 - Add comments in code only when genuinely needed and always in English.
 - Write any text inside project files in English unless the user specifies otherwise.
+- Exception: Task cards in `.tasks` must be written in Russian.
 - Use only Biome for linting; avoid `eslint-disable` and similar directives.
 - Do not use `null` inside the project. Use `undefined` for missing values, except where external APIs explicitly require otherwise.
 
@@ -79,6 +80,7 @@
 - Each task is a separate file following the template in `docs/tasks-manual.md`.
 - Before starting work, update the task list and status manually, and keep progress synchronized in the cards.
 - Present new initiatives first as a draft (description, priority, DoD). After approval, create a card using the template and work with it.
+- Write all task cards in Russian.
 
 ### Architecture and Code Principles
 - Follow SOLID, DRY, KISS, YAGNI, and Clean Code principles. Avoid unnecessary complexity while keeping extensibility in mind.

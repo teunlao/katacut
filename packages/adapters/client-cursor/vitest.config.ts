@@ -1,14 +1,12 @@
-import baseConfig from "../../../vitest.base.ts";
-import { defineConfig, mergeConfig } from "vitest/config";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(
-	baseConfig,
-	defineConfig({
-		test: {
-			name: "adapter-client-cursor",
-			root: __dirname,
-			include: ["test/**/*.test.{ts,tsx}"],
-			environment: "node"
-		}
-	})
-);
+export default defineConfig({
+	test: {
+		passWithNoTests: true,
+		pool: "threads",
+		name: "adapter-client-cursor",
+		root: __dirname,
+		include: ["test/**/*.test.{ts,tsx}"],
+		environment: "node",
+	},
+});

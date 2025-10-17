@@ -1,14 +1,12 @@
-import { defineConfig, mergeConfig } from "vitest/config";
-import baseConfig from "../../vitest.base.ts";
+import { defineConfig } from "vitest/config";
 
-export default mergeConfig(
-	baseConfig,
-	defineConfig({
-		test: {
-			name: "schema",
-			root: __dirname,
-			include: ["test/**/*.test.{ts,tsx}"],
-			environment: "node",
-		},
-	}),
-);
+export default defineConfig({
+	test: {
+		passWithNoTests: true,
+		pool: "threads",
+		name: "schema",
+		root: __dirname,
+		include: ["test/**/*.test.{ts,tsx}"],
+		environment: "node",
+	},
+});
