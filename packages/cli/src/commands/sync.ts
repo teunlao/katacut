@@ -6,11 +6,11 @@ import type { Command } from "commander";
 export function registerSyncCommand(program: Command) {
 	program
 		.command("sync")
-		.description("Синхронизировать конфигурацию KataCut с целевыми клиентами")
-		.option("--dry-run", "показать план без применения", false)
+		.description("Synchronize KataCut configuration with target clients")
+		.option("--dry-run", "print the plan without applying changes", false)
 		.option(
 			"-c, --config <path>",
-			"путь к katacut.config.jsonc",
+			"path to katacut.config.jsonc",
 			"katacut.config.jsonc",
 		)
 		.action(async (options: { dryRun?: boolean; config?: string }) => {
@@ -20,7 +20,7 @@ export function registerSyncCommand(program: Command) {
 				source = await readConfigFile(configPath);
 			} catch (error) {
 				if ((error as NodeJS.ErrnoException).code === "ENOENT") {
-					throw new Error(`Файл конфигурации не найден: ${configPath}`);
+					throw new Error(`Configuration file not found: ${configPath}`);
 				}
 				throw error;
 			}
@@ -28,24 +28,24 @@ export function registerSyncCommand(program: Command) {
 			if (result.issues.length > 0 || !result.config) {
 				for (const issue of result.issues) {
 					// eslint-disable-next-line no-console
-					console.error(`Ошибка конфига ${issue.path}: ${issue.message}`);
+					console.error(`Config error at ${issue.path}: ${issue.message}`);
 				}
-				throw new Error("Конфигурация содержит ошибки, синхронизация прервана");
+				throw new Error("Configuration contains errors; synchronization aborted");
 			}
 
 			const plan = createSyncPlan(result.config);
 
 			if (options.dryRun) {
 				// eslint-disable-next-line no-console
-				console.log("Dry-run план синхронизации:");
+				console.log("Dry-run synchronization plan:");
 				// eslint-disable-next-line no-console
 				console.log(JSON.stringify(plan, null, 2));
 				return;
 			}
 
-			// TODO: применить план, вызвать адаптеры
+			// TODO: apply plan and call adapters
 			// eslint-disable-next-line no-console
-			console.log("Пока применяется заглушечный план");
+			console.log("Applying placeholder plan");
 			// eslint-disable-next-line no-console
 			console.log(JSON.stringify(plan, null, 2));
 		});

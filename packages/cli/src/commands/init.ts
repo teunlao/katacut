@@ -19,8 +19,8 @@ const TEMPLATE = `{
 export function registerInitCommand(program: Command) {
   program
     .command('init')
-    .description('Создать файл katacut.config.jsonc с базовым шаблоном')
-    .option('-f, --force', 'перезаписать существующий конфиг', false)
+    .description('Create a baseline katacut.config.jsonc file')
+    .option('-f, --force', 'overwrite existing configuration', false)
     .action(async (options: { force?: boolean }) => {
       const targetPath = resolve(process.cwd(), 'katacut.config.jsonc');
       if (!options.force) {
@@ -28,7 +28,7 @@ export function registerInitCommand(program: Command) {
           await writeFile(targetPath, TEMPLATE, { flag: 'wx' });
         } catch (error) {
           if ((error as NodeJS.ErrnoException).code === 'EEXIST') {
-            throw new Error('Файл katacut.config.jsonc уже существует (используйте --force для перезаписи)');
+            throw new Error('katacut.config.jsonc already exists (use --force to overwrite)');
           }
           throw error;
         }
@@ -37,6 +37,6 @@ export function registerInitCommand(program: Command) {
       }
 
       // eslint-disable-next-line no-console
-      console.log(`Создан файл конфигурации: ${targetPath}`);
+      console.log(`Configuration file created: ${targetPath}`);
     });
 }

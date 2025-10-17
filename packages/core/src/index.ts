@@ -16,9 +16,7 @@ export function createSyncPlan(config: KatacutConfig): SyncPlan {
     : Object.keys(((config as { clients?: Record<string, unknown> }).clients) ?? {}).length;
 
   const summary =
-    clients === 0
-      ? 'Нет клиентов для синхронизации'
-      : `Запланирована синхронизация для ${clients} клиент(ов)`;
+    clients === 0 ? 'No clients to synchronize' : `Prepared synchronization for ${clients} client(s)`;
 
   return {
     summary,

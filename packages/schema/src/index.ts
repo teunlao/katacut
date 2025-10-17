@@ -25,7 +25,7 @@ export function parseConfig(source: string): ConfigValidationResult {
         issues: [
           {
             path: '',
-            message: 'Конфигурация должна быть объектом'
+          message: 'Configuration must be an object'
           }
         ]
       };
@@ -38,7 +38,7 @@ export function parseConfig(source: string): ConfigValidationResult {
       issues: [
         {
           path: '',
-          message: error instanceof Error ? error.message : 'Неизвестная ошибка разбора'
+          message: error instanceof Error ? error.message : 'Unknown parsing error'
         }
       ]
     };
