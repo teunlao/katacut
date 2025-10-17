@@ -1,4 +1,4 @@
-import { ensureClaudeAvailable } from "@katacut/adapter-client-claude";
+import { ensureClaudeAvailable } from "@katacut/adapter-client-claude-code";
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import type { Scope } from "@katacut/core";
@@ -20,7 +20,7 @@ export function registerInstallCommand(program: Command) {
 		.description("Install (apply) configuration to target client via MCP")
 		.option("-c, --config <path>", "path to configuration file", undefined)
 		.option("--scope <scope>", "Scope: user|project (default: user)")
-		.option("--client <id>", "Client id (default: claude-code)")
+    .option("--client <id>", "Client id (default: ClaudeCode)")
 		.option("--dry-run", "print plan without changes", false)
 		.option("--prune", "remove servers not present in config", false)
 		.action(async (options: InstallOptions) => {
@@ -30,7 +30,7 @@ export function registerInstallCommand(program: Command) {
 			}
 
 			const config = await loadAndValidateConfig(options.config);
-			const clientId = options.client ?? "claude-code";
+      const clientId = options.client ?? "ClaudeCode";
 			const adapter = await getAdapter(clientId);
 			const scope: Scope = options.scope === "project" ? "project" : "user";
 

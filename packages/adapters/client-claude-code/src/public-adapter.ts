@@ -13,7 +13,7 @@ import { toClaudeServerJson } from "./map.js";
 import { ensureClaudeAvailable } from "./cli.js";
 
 export const claudeAdapter: ClientAdapter = {
-  id: "claude-code",
+  id: "ClaudeCode",
   async readProject(cwd?: string): Promise<ReadMcpResult> {
     return readProjectMcp(cwd);
   },
@@ -55,4 +55,3 @@ export const claudeAdapter: ClientAdapter = {
     return ensureClaudeAvailable();
   },
 };
-

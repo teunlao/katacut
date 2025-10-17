@@ -3,7 +3,7 @@ import { mkdtemp, rm, writeFile, mkdir } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 
-describe("claude-code file readers", () => {
+describe("ClaudeCode file readers", () => {
   it("reads project .mcp.json", async () => {
     const dir = await mkdtemp(join(tmpdir(), "kc-cc-proj-"));
     try {
@@ -15,7 +15,7 @@ describe("claude-code file readers", () => {
       };
       await writeFile(join(dir, ".mcp.json"), JSON.stringify(content), "utf8");
 
-      const mod = await import("@katacut/adapter-client-claude");
+      const mod = await import("@katacut/adapter-client-claude-code");
       const res = await mod.readProjectMcp(dir);
       expect(res.source).toBe(join(dir, ".mcp.json"));
       expect(Object.keys(res.mcpServers).sort()).toEqual(["fs", "github"]);
@@ -37,7 +37,7 @@ describe("claude-code file readers", () => {
         homedir: () => fakeHome,
         tmpdir: () => tmpdir(),
       }));
-      const mod = await import("@katacut/adapter-client-claude");
+      const mod = await import("@katacut/adapter-client-claude-code");
       const res = await mod.readUserMcp();
       expect(res.source?.endsWith(".claude/settings.json")).toBe(true);
       expect(res.mcpServers.x).toEqual({ type: "stdio", command: "echo", args: ["hi"] });
@@ -47,4 +47,3 @@ describe("claude-code file readers", () => {
     }
   });
 });
-

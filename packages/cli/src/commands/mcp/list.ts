@@ -5,7 +5,7 @@ export function registerMcpList(parent: Command) {
   parent
     .command("list")
     .description("List MCP servers for the specified client")
-    .requiredOption("--client <name>", "Client id (only 'claude-code' is supported)")
+    .requiredOption("--client <name>", "Client id (only 'ClaudeCode' is supported)")
     .option("--scope <scope>", "Scope: project|user (default: both)")
     .action(async (opts: { client: string; scope?: "project" | "user" }) => {
       const adapter = await getAdapter(opts.client);

@@ -23,7 +23,7 @@
   "dependencies": {
     "@katacut/core": "workspace:*",
     "@katacut/schema": "workspace:*",
-    "@katacut/adapter-client-claude": "workspace:*",
+    "@katacut/adapter-client-claude-code": "workspace:*",
     "@katacut/utils": "workspace:*",
     "commander": "^12.1.0"
   }

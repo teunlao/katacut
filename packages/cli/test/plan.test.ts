@@ -12,7 +12,7 @@ describe("generic plan helpers", () => {
   } as const;
 
   it("produces desired from config via adapter", async () => {
-    const adapter = await getAdapter("claude-code");
+    const adapter = await getAdapter("ClaudeCode");
     const d = adapter.desiredFromConfig(config as any);
     expect(Object.keys(d).sort()).toEqual(["fs", "github"]);
     expect(d.github.type).toBe("http");
@@ -20,7 +20,7 @@ describe("generic plan helpers", () => {
   });
 
   it("diffs by names with prune", async () => {
-    const adapter = await getAdapter("claude-code");
+    const adapter = await getAdapter("ClaudeCode");
     const desired = adapter.desiredFromConfig(config as any);
     const names = new Set(["github", "extra"]);
     const plan = diffByNames(desired, names, true);
@@ -29,4 +29,3 @@ describe("generic plan helpers", () => {
     expect(plan.find((a) => a.action === "remove" && a.name === "extra")).toBeTruthy();
   });
 });
-
