@@ -1,4 +1,6 @@
-import { createSyncPlan } from "@katacut/core";
+import { resolve } from "node:path";
+
+import { createSyncPlan, DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from "@katacut/core";
 import { parseConfig } from "@katacut/schema";
 import { readConfigFile } from "@katacut/utils";
 import type { Command } from "commander";
@@ -10,11 +12,18 @@ export function registerSyncCommand(program: Command) {
 		.option("--dry-run", "print the plan without applying changes", false)
 		.option(
 			"-c, --config <path>",
-			"path to katacut.config.jsonc",
-			"katacut.config.jsonc",
+			"path to configuration file (defaults to katacut.config.jsonc / katacut.config.json / katacut.jsonc / katacut.json)",
 		)
 		.action(async (options: { dryRun?: boolean; config?: string }) => {
-			const configPath = options.config ?? "katacut.config.jsonc";
+			const cwd = process.cwd();
+			const explicitConfigPath = options.config ? resolve(cwd, options.config) : undefined;
+			const discoveredPath = explicitConfigPath ?? (await resolveConfigPath({ cwd }));
+
+			if (!discoveredPath) {
+				throw new Error(`Configuration file not found. Checked: ${DEFAULT_CONFIG_FILENAMES.join(", ")}`);
+			}
+
+			const configPath = discoveredPath;
 			let source: string;
 			try {
 				source = await readConfigFile(configPath);
@@ -36,17 +45,13 @@ export function registerSyncCommand(program: Command) {
 			const plan = createSyncPlan(result.config);
 
 			if (options.dryRun) {
-				// eslint-disable-next-line no-console
 				console.log("Dry-run synchronization plan:");
-				// eslint-disable-next-line no-console
 				console.log(JSON.stringify(plan, null, 2));
 				return;
 			}
 
 			// TODO: apply plan and call adapters
-			// eslint-disable-next-line no-console
 			console.log("Applying placeholder plan");
-			// eslint-disable-next-line no-console
 			console.log(JSON.stringify(plan, null, 2));
 		});
 }

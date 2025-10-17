@@ -16,9 +16,6 @@ describe("parseConfig", () => {
 		expect(result.issues).toHaveLength(0);
 		expect(result.config).toMatchObject({
 			version: "0.1.0",
-			clients: {
-				cursor: { kind: "cursor", scope: "project" }
-			},
 			mcp: {
 				github: { transport: "http", url: "https://api.example.com/mcp" }
 			}

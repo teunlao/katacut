@@ -1,22 +1,25 @@
-import type { KatacutConfig } from '@katacut/schema';
+import type { KatacutConfig } from "@katacut/schema";
 
 export interface SyncPlanTarget {
-  readonly name: string;
-  readonly actions: string[];
+	readonly name: string;
+	readonly actions: string[];
 }
 
 export interface SyncPlan {
-  readonly summary: string;
-  readonly targets: SyncPlanTarget[];
+	readonly summary: string;
+	readonly targets: SyncPlanTarget[];
 }
 
 export function createSyncPlan(config: KatacutConfig): SyncPlan {
-  const serverCount = Object.keys(config.mcp ?? {}).length;
-  const summary =
-    serverCount === 0 ? 'No MCP servers to synchronize' : `Prepared synchronization for ${serverCount} MCP server(s)`;
+	const serverCount = Object.keys(config.mcp ?? {}).length;
+	const summary =
+		serverCount === 0 ? "No MCP servers to synchronize" : `Prepared synchronization for ${serverCount} MCP server(s)`;
 
-  return {
-    summary,
-    targets: []
-  };
+	return {
+		summary,
+		targets: [],
+	};
 }
+
+export type { ResolveConfigPathOptions } from "./config.js";
+export { DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from "./config.js";
