@@ -23,3 +23,13 @@ export function createSyncPlan(config: KatacutConfig): SyncPlan {
 
 export type { ResolveConfigPathOptions } from "./config.js";
 export { DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from "./config.js";
+export type {
+  ClientAdapter,
+  ServerJson,
+  ServerJsonHttp,
+  ServerJsonStdio,
+  ReadMcpResult,
+  Scope,
+  InstallStep,
+  ApplyResultSummary,
+} from "./ports/adapters.js";

@@ -15,7 +15,7 @@
   },
   "dependencies": {
     "@katacut/schema": "workspace:*",
-    "@katacut/utils": "workspace:*"
+    "@katacut/utils": "workspace:*",
+    "@katacut/core": "workspace:*"
   }
 }
-

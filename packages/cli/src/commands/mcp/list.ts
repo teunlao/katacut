@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { readProjectMcp, readUserMcp } from "@katacut/adapter-client-claude";
+import { getAdapter } from "../../lib/adapters/registry.js";
 
 export function registerMcpList(parent: Command) {
   parent
@@ -8,20 +8,17 @@ export function registerMcpList(parent: Command) {
     .requiredOption("--client <name>", "Client id (only 'claude-code' is supported)")
     .option("--scope <scope>", "Scope: project|user (default: both)")
     .action(async (opts: { client: string; scope?: "project" | "user" }) => {
-      if (opts.client !== "claude-code") {
-        throw new Error("Only --client claude-code is supported in this POC");
-      }
+      const adapter = await getAdapter(opts.client);
       const out: Record<string, unknown> = {};
       const cwd = process.cwd();
       if (!opts.scope || opts.scope === "project") {
-        const project = await readProjectMcp(cwd);
+        const project = await adapter.readProject(cwd);
         out.project = { source: project.source ?? null, mcpServers: project.mcpServers };
       }
       if (!opts.scope || opts.scope === "user") {
-        const user = await readUserMcp();
+        const user = await adapter.readUser();
         out.user = { source: user.source ?? null, mcpServers: user.mcpServers };
       }
-      console.log(JSON.stringify({ client: "claude-code", ...out }, null, 2));
+      console.log(JSON.stringify({ client: adapter.id, ...out }, null, 2));
     });
 }
-
