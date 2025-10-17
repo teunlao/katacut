@@ -4,11 +4,15 @@
   "private": true,
   "type": "module",
   "bin": {
-    "katacut": "dist/index.js"
+    "katacut": "./bin/katacut.mjs",
+    "kc": "./bin/katacut.mjs"
   },
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "bin",
+    "dist"
+  ],
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
     "lint": "biome lint .",
