@@ -4,5 +4,5 @@
     "composite": true,
     "noEmit": true
   },
-  "include": ["vitest.config.ts"]
+  "include": ["vitest.base.ts", "vitest.workspace.ts"]
 }
