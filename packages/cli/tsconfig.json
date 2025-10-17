@@ -9,6 +9,6 @@
   "references": [
     { "path": "../core" },
     { "path": "../schema" },
-    { "path": "../utils-fs" }
+    { "path": "../utils" }
   ]
 }

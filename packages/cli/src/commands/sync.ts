@@ -1,6 +1,6 @@
 import { createSyncPlan } from "@katacut/core";
 import { parseConfig } from "@katacut/schema";
-import { readConfigFile } from "@katacut/utils-fs";
+import { readConfigFile } from "@katacut/utils";
 import type { Command } from "commander";
 
 export function registerSyncCommand(program: Command) {

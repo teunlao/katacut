@@ -23,7 +23,7 @@
   "dependencies": {
     "@katacut/core": "workspace:*",
     "@katacut/schema": "workspace:*",
-    "@katacut/utils-fs": "workspace:*",
+    "@katacut/utils": "workspace:*",
     "commander": "^12.1.0"
   }
 }

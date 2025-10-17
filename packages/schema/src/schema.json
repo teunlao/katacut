@@ -1,0 +1,98 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"title": "KataCut configuration",
+	"type": "object",
+	"additionalProperties": false,
+	"properties": {
+		"$schema": {
+			"type": "string",
+			"description": "JSON Schema declaration"
+		},
+		"version": {
+			"type": "string",
+			"description": "Configuration version"
+		},
+		"metadata": {
+			"type": "object",
+			"additionalProperties": false,
+			"properties": {
+				"name": {
+					"type": "string"
+				},
+				"description": {
+					"type": "string"
+				}
+			}
+		},
+		"profiles": {
+			"type": "object",
+			"patternProperties": {
+				"^[a-zA-Z0-9_.-]+$": {
+					"type": "object",
+					"additionalProperties": false,
+					"properties": {
+						"extends": {
+							"anyOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" }, "uniqueItems": true }]
+						},
+						"env": {
+							"type": "object",
+							"additionalProperties": { "type": "string" }
+						}
+					}
+				}
+			},
+			"additionalProperties": false
+		},
+		"mcp": {
+			"type": "object",
+			"patternProperties": {
+				"^[a-zA-Z0-9_.-]+$": {
+					"type": "object",
+					"additionalProperties": false,
+					"required": ["transport"],
+					"properties": {
+						"transport": {
+							"enum": ["http", "stdio", "websocket", "command"]
+						},
+						"scope": {
+							"enum": ["project", "workspace", "user"]
+						},
+						"url": {
+							"type": "string"
+						},
+						"command": {
+							"type": "string"
+						},
+						"args": {
+							"type": "array",
+							"items": { "type": "string" }
+						},
+						"env": {
+							"type": "object",
+							"additionalProperties": { "type": "string" }
+						},
+						"headers": {
+							"type": "object",
+							"additionalProperties": { "type": "string" }
+						},
+						"permissions": {
+							"type": "object",
+							"properties": {
+								"filesystem": {
+									"type": "array",
+									"items": { "type": "string" }
+								},
+								"network": {
+									"type": "array",
+									"items": { "type": "string" }
+								}
+							}
+						}
+					}
+				}
+			},
+			"additionalProperties": false
+		}
+	},
+	"additionalProperties": false
+}

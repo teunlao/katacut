@@ -4,15 +4,7 @@ import type { Command } from "commander";
 
 const TEMPLATE = `{
   "version": "0.1.0",
-  "clients": {},
-  "servers": {},
-  "profiles": {
-    "default": {
-      "clients": [],
-      "servers": []
-    }
-  },
-  "secrets": {}
+  "mcp": {}
 }
 `;
 

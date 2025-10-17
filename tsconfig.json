@@ -5,9 +5,7 @@
     { "path": "packages/schema/tsconfig.build.json" },
     { "path": "packages/core/tsconfig.build.json" },
     { "path": "packages/cli/tsconfig.build.json" },
-    { "path": "packages/utils-fs/tsconfig.build.json" },
-    { "path": "packages/utils-logging/tsconfig.build.json" },
-    { "path": "packages/utils-errors/tsconfig.build.json" },
+    { "path": "packages/utils/tsconfig.build.json" },
     { "path": "packages/adapters/client-cursor/tsconfig.build.json" },
     { "path": "packages/adapters/client-vscode/tsconfig.build.json" },
     { "path": "tsconfig.vitest.json" }

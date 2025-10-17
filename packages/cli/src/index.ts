@@ -1,19 +1,16 @@
 #!/usr/bin/env node
-import { Command } from 'commander';
-import { registerInitCommand } from './commands/init.js';
-import { registerSyncCommand } from './commands/sync.js';
+import { Command } from "commander";
+import { registerInitCommand } from "./commands/init.js";
+import { registerSyncCommand } from "./commands/sync.js";
 
 const program = new Command();
 
-program
-  .name('katacut')
-  .description('Unified orchestration CLI for KataCut configurations')
-  .version('0.0.0');
+program.name("katacut").description("Unified orchestration CLI for KataCut configurations").version("0.0.0");
 
 registerInitCommand(program);
 registerSyncCommand(program);
 
-program.parseAsync(process.argv).catch(error => {
-  console.error(error instanceof Error ? error.message : String(error));
-  process.exit(1);
+program.parseAsync(process.argv).catch((error) => {
+	console.error(error instanceof Error ? error.message : String(error));
+	process.exit(1);
 });

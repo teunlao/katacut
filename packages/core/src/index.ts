@@ -11,12 +11,9 @@ export interface SyncPlan {
 }
 
 export function createSyncPlan(config: KatacutConfig): SyncPlan {
-  const clients = Array.isArray((config as { clients?: unknown }).clients)
-    ? ((config as { clients: unknown[] }).clients.length ?? 0)
-    : Object.keys(((config as { clients?: Record<string, unknown> }).clients) ?? {}).length;
-
+  const serverCount = Object.keys(config.mcp ?? {}).length;
   const summary =
-    clients === 0 ? 'No clients to synchronize' : `Prepared synchronization for ${clients} client(s)`;
+    serverCount === 0 ? 'No MCP servers to synchronize' : `Prepared synchronization for ${serverCount} MCP server(s)`;
 
   return {
     summary,

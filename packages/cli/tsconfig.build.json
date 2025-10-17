@@ -13,6 +13,6 @@
   "references": [
     { "path": "../core/tsconfig.build.json" },
     { "path": "../schema/tsconfig.build.json" },
-    { "path": "../utils-fs/tsconfig.build.json" }
+    { "path": "../utils/tsconfig.build.json" }
   ]
 }
