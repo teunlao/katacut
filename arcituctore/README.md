@@ -162,3 +162,97 @@ Core --(targets)--> ApplyPort --> [Adapter: Cursor] --> .cursor/mcp.json
 - Таргет: конкретная инструкция материализовать конфигурацию для клиента.
 - Дифф: краткое описание отличий между желаемым и текущим состоянием.
 - Apply: выполнение побочных эффектов для достижения желаемого состояния.
+
+## 16) Scopes, Global и политика установки (планы)
+
+Цель: явно различать «задекларированное» проектом и «фактическое» состояние у пользователя, уметь работать с клиентами, которые не поддерживают проектный scope, и дать удобную глобальную установку по аналогии с npm/pnpm (`-g`, `--global`).
+
+Ключевые понятия
+- Scope: `project` | `user` | `global`.
+  - `project` — локально в репозитории (например, `./.mcp.json`).
+  - `user` — пользовательский профиль клиента (домашний каталог).
+  - `global` — явная глобальная установка по аналогии с npm `-g` (вне управления проектом/lockfile).
+- Декларация vs Факт:
+  - Декларация (Desired): то, что описано в `katacut.config.*` и зафиксировано в lockfile.
+  - Факт (Realized): то, что реально установлено у пользователя в `project/user/global`.
+- Режим применения (Mode): `native` | `emulated` | `global`.
+  - `native` — установлен ровно в запрошенный scope, как поддерживается клиентом.
+  - `emulated` — «псевдо‑project» через `user`, если клиент не умеет `project` (с прозрачной пометкой).
+  - `global` — явная установка «навсегда», не управляется проектом.
+
+Политика по умолчанию
+- Предпочтение `project` (если клиент поддерживает natively).
+- Если `project` недоступен, допускаем эмуляцию через `user` (Mode = `emulated`).
+- Если нет ни `project`, ни эмуляции — операция невозможна (ошибка с подсказкой).
+- Явный `--global`/`-g` всегда выполняет «вне проекта» и не попадает в lockfile.
+
+Интерфейс возможностей адаптера (capabilities)
+```
+capabilities(): {
+  supportedScopes: Set<'project'|'user'>,
+  emulateProjectWithUser: boolean,
+  supportsGlobalExplicit: boolean
+}
+```
+
+Контракты apply (расширение)
+```
+applyInstall(steps, requestedScope, policy) -> Array<{
+  name: string,
+  requestedScope: 'project'|'user',
+  realizedScope: 'project'|'user'|'global',
+  mode: 'native'|'emulated'|'global',
+  outcome: 'added'|'updated'|'remove'|'skip'|'failed',
+  reason?: string
+}>
+```
+
+Lockfile и локальный state
+- Lockfile `katacut.lock.json` (в репозитории): фиксирует желаемое состояние проекта.
+  - Структура (концепция):
+  ```json
+  {
+    "version": "0",
+    "client": "claude-code",
+    "mcpServers": {
+      "<name>": { "scope": "project|user", "fingerprint": "sha256(stable-json)" }
+    }
+  }
+  ```
+- Локальный state `.katacut/state.json` (в `.gitignore`): фиксирует фактический результат применения на машине.
+  - Пишется `kc install` после успеха.
+  - Содержит: hostname/machineId, timestamp, версию CLI/adapter, per‑server: `requestedScope`, `realizedScope`, `mode`, `appliedFingerprint`, `sourcePath?`, `result`.
+
+CLI‑поведение и UX
+- Установка по умолчанию: `kc install` предпочитает `project`, при необходимости эмулирует через `user` (если политика разрешает).
+- Глобальная установка: `kc install -g <name>` или отдельные команды `kc global add/remove/list`.
+  - `global` никогда не попадает в lockfile, но фиксируется в пользовательском глобальном состоянии (для `doctor` и `remove -g`).
+- Удаление:
+  - Проектное: через план/`--prune` влияет только на управляемые проектом записи.
+  - Глобальное: `kc global remove <name>` или `kc install -g --remove <name>` — по аналогии с npm.
+
+Doctor и верификация
+- `kc doctor` сопоставляет три источника: Desired (lockfile) ↔ Realized (файлы/клиент) ↔ Local state.
+- Отчёт подсвечивает: drift (несовпадение fingerprint), emulated установки, unsupported, проблемы прав.
+- Коды выхода: `0=ok`, `1=warn` (дрейф/эмуляции), `2=error` (нет CLI/прав/невозможно выполнить политику).
+
+ASCII‑схема принятия решения (упрощённо)
+```
+Requested: project
+      |
+      v
+Client supports project? -- yes --> native(project)
+      | no
+      v
+Emulation allowed? ------ yes --> emulated(user)
+      | no
+      v
+error (unsupported)
+```
+
+Что не попадает в lockfile
+- Любые явные глобальные операции (`-g`, `--global`).
+- Пользовательские записи, не управляемые проектом.
+
+Открытые вопросы (в работе)
+- Профили (переключатели политики и scope на уровень пользователя/окружения) — спроектировать после стабилизации lockfile/state.
