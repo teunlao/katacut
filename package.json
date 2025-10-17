@@ -14,7 +14,7 @@
 		"typecheck:watch": "pnpm exec tsc -b --watch",
 		"dev": "pnpm exec tsc -b --watch",
 		"katacut": "node packages/cli/bin/katacut.mjs",
-		"kc": "pnpm katacut"
+		"kc": "node packages/cli/bin/katacut.mjs"
 	},
 	"devDependencies": {
 		"@teunlao/code-consolidator": "^0.13.0",
