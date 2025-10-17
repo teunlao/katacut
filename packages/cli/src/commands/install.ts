@@ -1,8 +1,7 @@
-import { ensureClaudeAvailable } from "@katacut/adapter-client-claude-code";
-import type { Command } from "commander";
-import { getAdapter } from "../lib/adapters/registry.js";
 import type { Scope } from "@katacut/core";
 import { diffDesiredCurrent } from "@katacut/core";
+import type { Command } from "commander";
+import { getAdapter } from "../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../lib/config.js";
 
 export interface InstallOptions {
@@ -20,21 +19,22 @@ export function registerInstallCommand(program: Command) {
 		.description("Install (apply) configuration to target client via MCP")
 		.option("-c, --config <path>", "path to configuration file", undefined)
 		.option("--scope <scope>", "Scope: user|project (default: user)")
-    .option("--client <id>", "Client id (default: claude-code)")
+		.option("--client <id>", "Client id (default: claude-code)")
 		.option("--dry-run", "print plan without changes", false)
 		.option("--prune", "remove servers not present in config", false)
 		.action(async (options: InstallOptions) => {
 			const cwd = process.cwd();
-			if (!(await ensureClaudeAvailable())) {
+
+			const clientId = options.client ?? "claude-code";
+			const adapter = await getAdapter(clientId);
+			if (!(await adapter.checkAvailable?.())) {
 				throw new Error("Claude CLI is not available in PATH. Please install and try again.");
 			}
 
 			const config = await loadAndValidateConfig(options.config);
-      const clientId = options.client ?? "claude-code";
-			const adapter = await getAdapter(clientId);
 			const scope: Scope = options.scope === "project" ? "project" : "user";
 
-      const desired = adapter.desiredFromConfig(config);
+			const desired = adapter.desiredFromConfig(config);
 
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);

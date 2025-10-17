@@ -13,11 +13,15 @@ export function registerMcpList(parent: Command) {
       const cwd = process.cwd();
       if (!opts.scope || opts.scope === "project") {
         const project = await adapter.readProject(cwd);
-        out.project = { source: project.source ?? null, mcpServers: project.mcpServers };
+        const projectOut: Record<string, unknown> = { mcpServers: project.mcpServers };
+        if (project.source !== undefined) projectOut.source = project.source;
+        out.project = projectOut;
       }
       if (!opts.scope || opts.scope === "user") {
         const user = await adapter.readUser();
-        out.user = { source: user.source ?? null, mcpServers: user.mcpServers };
+        const userOut: Record<string, unknown> = { mcpServers: user.mcpServers };
+        if (user.source !== undefined) userOut.source = user.source;
+        out.user = userOut;
       }
       console.log(JSON.stringify({ client: adapter.id, ...out }, null, 2));
     });

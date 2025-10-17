@@ -87,3 +87,13 @@
 - Implement only what is required for the current task; do not add future functionality without approval.
 - Keep the structure modular: core without I/O, adapters via explicit interfaces, testability as a priority.
 - Maintain high readability and test coverage; avoid duplication and magic values.
+
+### TypeScript Code Rules (Critical)
+- Never use `any`. This applies to production code and tests. If you believe `any` is unavoidable, treat it as an exception of last resort and get explicit approval first.
+- Prefer `unknown` over `any` at boundaries (e.g., JSON parsing, CLI/process I/O, third‑party data). Immediately narrow with validators or custom type guards before use.
+- Avoid type assertions (`as`) and non‑null assertions (`!`). Use them only when all safer options are exhausted:
+  - First prefer real narrowing: discriminated unions, user‑defined type guards, `in` checks, `typeof`/`Array.isArray`, schema validation (AJV/JSON Schema, etc.).
+  - If an assertion is still required, keep it as local and minimal as possible and add a short justification comment directly above the line (e.g., `// justified: upstream schema validated`).
+- Tests follow the same rules: no `any`, minimal or no `as`. Use factory helpers, `as const`, and typed fixtures instead of loosening types.
+- Interop with libraries lacking types: write minimal precise ambient typings or wrapper functions instead of falling back to `any`/broad assertions.
+- Prefer strong compiler settings and patterns that preserve soundness (e.g., strict mode, explicit return types, exhaustive `switch` with `never`).
