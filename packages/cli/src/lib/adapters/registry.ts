@@ -1,8 +1,8 @@
 import type { ClientAdapter } from "@katacut/core";
-import { claudeAdapter } from "@katacut/adapter-client-claude-code";
+import { claudeCodeAdapter } from "@katacut/adapter-client-claude-code";
 
 const registry: Record<string, ClientAdapter> = {
-  ClaudeCode: claudeAdapter,
+  "claude-code": claudeCodeAdapter,
 };
 
 export async function getAdapter(id: string): Promise<ClientAdapter> {

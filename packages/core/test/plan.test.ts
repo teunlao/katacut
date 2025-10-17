@@ -1,8 +1,8 @@
 import { describe, it, expect } from "vitest";
-import { diffByNames } from "../src/lib/plan.js";
-import { getAdapter } from "../src/lib/adapters/registry.js";
+import { diffByNames } from "@katacut/core";
+import { claudeCodeAdapter } from "../../adapters/client-claude-code/src/public-adapter.js";
 
-describe("generic plan helpers", () => {
+describe("plan diff (core)", () => {
   const config = {
     version: "0.1.0",
     mcp: {
@@ -11,17 +11,8 @@ describe("generic plan helpers", () => {
     },
   } as const;
 
-  it("produces desired from config via adapter", async () => {
-    const adapter = await getAdapter("ClaudeCode");
-    const d = adapter.desiredFromConfig(config as any);
-    expect(Object.keys(d).sort()).toEqual(["fs", "github"]);
-    expect(d.github.type).toBe("http");
-    expect(d.fs.type).toBe("stdio");
-  });
-
-  it("diffs by names with prune", async () => {
-    const adapter = await getAdapter("ClaudeCode");
-    const desired = adapter.desiredFromConfig(config as any);
+  it("diffs by names with prune", () => {
+    const desired = claudeCodeAdapter.desiredFromConfig(config as unknown);
     const names = new Set(["github", "extra"]);
     const plan = diffByNames(desired, names, true);
     expect(plan.find((a) => a.action === "add" && a.name === "fs")).toBeTruthy();

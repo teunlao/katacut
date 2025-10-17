@@ -33,3 +33,4 @@ export type {
   InstallStep,
   ApplyResultSummary,
 } from "./ports/adapters.js";
+export { diffByNames, diffDesiredCurrent } from "./plan/diff.js";

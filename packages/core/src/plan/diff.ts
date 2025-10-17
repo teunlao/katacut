@@ -1,4 +1,4 @@
-import type { ServerJson } from "@katacut/core";
+import type { ServerJson } from "../ports/adapters.js";
 
 export type ActionKind = "add" | "update" | "remove" | "skip";
 export interface Action { readonly action: ActionKind; readonly name: string; readonly json?: ServerJson }
@@ -7,7 +7,7 @@ export function diffDesiredCurrent(
   desired: Record<string, ServerJson>,
   current: Record<string, ServerJson>,
   prune: boolean,
-  _currentKnown: boolean, // reserved for future nuanced logic
+  _currentKnown: boolean,
 ): Action[] {
   const plan: Action[] = [];
   for (const [name, d] of Object.entries(desired)) {
@@ -34,3 +34,4 @@ export function diffByNames(
   if (prune) for (const name of currentNames) if (!desiredNames.has(name)) plan.push({ action: "remove", name });
   return plan;
 }
+

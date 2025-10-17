@@ -12,8 +12,8 @@ import { readProjectMcp, readUserMcp } from "./files.js";
 import { toClaudeServerJson } from "./map.js";
 import { ensureClaudeAvailable } from "./cli.js";
 
-export const claudeAdapter: ClientAdapter = {
-  id: "ClaudeCode",
+export const claudeCodeAdapter: ClientAdapter = {
+  id: "claude-code",
   async readProject(cwd?: string): Promise<ReadMcpResult> {
     return readProjectMcp(cwd);
   },
