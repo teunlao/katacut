@@ -7,16 +7,8 @@ export async function ensureClaudeAvailable(): Promise<boolean> {
 }
 
 export async function listClaudeServers(scope: ClaudeScope, cwd = process.cwd()): Promise<Record<string, ClaudeServerJson>> {
-  const attempt = await execCapture("claude", ["mcp", "list", "--scope", scope, "--json"], { cwd });
-  if (attempt.code === 0) {
-    try {
-      const parsed = JSON.parse(attempt.stdout) as { mcpServers?: Record<string, ClaudeServerJson> } | Record<string, ClaudeServerJson>;
-      if ("mcpServers" in parsed && parsed.mcpServers) return parsed.mcpServers as Record<string, ClaudeServerJson>;
-      return parsed as Record<string, ClaudeServerJson>;
-    } catch {
-      // fall back below
-    }
-  }
+  // У установленной версии Claude CLI нет стабильного JSON-вывода для list.
+  // Для project-scope читаем файл .mcp.json. Для user-scope возвращаем пусто (состояние неизвестно).
   if (scope === "project") {
     try {
       const text = await readTextFile(".mcp.json", { cwd });
@@ -27,6 +19,19 @@ export async function listClaudeServers(scope: ClaudeScope, cwd = process.cwd())
     }
   }
   return {};
+}
+
+export async function listClaudeServerNames(cwd = process.cwd()): Promise<Set<string>> {
+  const res = await execCapture("claude", ["mcp", "list"], { cwd });
+  const names = new Set<string>();
+  if (res.code !== 0) return names;
+  const lines = res.stdout.split(/\r?\n/);
+  for (const line of lines) {
+    // Format example: "github: https://... (HTTP) - \u2717 Failed" or "fs: npx ... - \u2713 Connected"
+    const m = line.match(/^\s*([A-Za-z0-9_.-]+):\s/);
+    if (m) names.add(m[1]);
+  }
+  return names;
 }
 
 export async function addOrUpdateClaudeServer(
@@ -45,4 +50,3 @@ export async function removeClaudeServer(name: string, scope: ClaudeScope, cwd =
   const res = await execCapture("claude", ["mcp", "remove", name, "--scope", scope], { cwd });
   return { code: res.code, stderr: res.stderr };
 }
-

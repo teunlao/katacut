@@ -1,4 +1,16 @@
 {
   "version": "0.1.0",
-  "mcp": {}
+  "mcp": {
+    "github": {
+      "transport": "http",
+      "url": "https://api.githubcopilot.com/mcp",
+      "headers": {}
+    },
+    "fs": {
+      "transport": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+      "env": {}
+    }
+  }
 }
