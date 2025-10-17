@@ -1,8 +1,8 @@
 {
-  "extends": "./tsconfig.base.json",
-  "compilerOptions": {
-    "composite": true,
-    "noEmit": true
-  },
-  "include": ["vitest.base.ts", "vitest.workspace.ts"]
+	"extends": "./tsconfig.base.json",
+	"compilerOptions": {
+		"composite": true,
+		"noEmit": true
+	},
+	"include": ["vitest.base.ts", "vitest.config.ts"]
 }
