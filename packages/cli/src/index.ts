@@ -14,7 +14,6 @@ registerInitCommand(program);
 registerSyncCommand(program);
 
 program.parseAsync(process.argv).catch(error => {
-  // eslint-disable-next-line no-console
   console.error(error instanceof Error ? error.message : String(error));
   process.exit(1);
 });
