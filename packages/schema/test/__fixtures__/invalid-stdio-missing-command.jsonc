@@ -1,0 +1,7 @@
+{
+  "mcp": {
+    "local": {
+      "transport": "stdio"
+    }
+  }
+}
