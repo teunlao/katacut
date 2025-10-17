@@ -89,11 +89,13 @@ describe("kc install (CLI)", () => {
     const program = new Command();
     registerInstallCommand(program);
 
-    // First run: no current -> add two
+    // First run: no current -> add two (and a table is printed)
     await program.parseAsync(["node", "cli", "install", "--client", "claude-code", "--scope", "project", "--dry-run", "-c", configPath], { from: "node" });
     const jsonLog1 = logSpy.mock.calls.map((c) => c[0]).find((s) => typeof s === "string" && String(s).trim().startsWith("["));
     const plan1 = parsePlanJson(jsonLog1);
     expect(plan1.filter((s) => s.action === "add").length).toBe(2);
+    // table header present
+    expect(logSpy.mock.calls.some((c) => String(c[0]).includes("Name  |  Action  |  Scope"))).toBe(true);
 
     // Make current = desired
     current = { a: { type: "http", url: "https://a" }, b: { type: "stdio", command: "echo", args: ["hi"] } };

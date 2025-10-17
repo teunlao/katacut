@@ -14,8 +14,9 @@ export interface InstallOptions {
 	readonly dryRun?: boolean;
 	readonly prune?: boolean;
 	readonly writeLock?: boolean;
-	readonly frozenLock?: boolean;
-	readonly lockfileOnly?: boolean;
+  readonly frozenLock?: boolean;
+  readonly lockfileOnly?: boolean;
+  readonly yes?: boolean;
 }
 
 export function registerInstallCommand(program: Command) {
@@ -30,6 +31,7 @@ export function registerInstallCommand(program: Command) {
 		.option("--no-write-lock", "do not write katacut.lock.json after apply")
 		.option("--frozen-lock", "require existing lock to match config and state; make no changes", false)
 		.option("--lockfile-only", "generate/update lockfile without applying changes", false)
+		.option("-y, --yes", "confirm destructive operations like --prune", false)
 		.action(async (options: InstallOptions) => {
 			const cwd = process.cwd();
 
@@ -96,9 +98,17 @@ export function registerInstallCommand(program: Command) {
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);
 
-			// Print plan always
+			// Print plan always (JSON + compact table)
 			console.log("Plan:");
 			console.log(JSON.stringify(plan, null, 2));
+			printPlanTable(plan, scope);
+
+			// Safety: require --yes for --prune to avoid accidental removals
+			if (options.prune && !options.yes) {
+				console.error("Refusing to prune without confirmation. Re-run with --yes to proceed.");
+				process.exitCode = 1;
+				return;
+			}
 
 			if (options.dryRun) return;
 
@@ -111,6 +121,7 @@ export function registerInstallCommand(program: Command) {
 			console.log(
 				`Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
 			);
+			printSummaryTable(summary, skipped);
 			if (summary.failed > 0) {
 				process.exitCode = 1;
 				return;
@@ -122,4 +133,28 @@ export function registerInstallCommand(program: Command) {
 				console.log(`Updated lockfile: ${lockPath}`);
 			}
 		});
+}
+
+type PlanItem = { readonly action: string; readonly name: string };
+function printPlanTable(plan: readonly PlanItem[], scope: Scope) {
+  const headers = ["Name", "Action", "Scope"] as const;
+  const rows = plan.map((p) => [p.name, p.action.toUpperCase(), scope]);
+  renderTable(headers as unknown as string[], rows.map((r) => r.map(String)));
+}
+
+function printSummaryTable(summary: { added: number; updated: number; removed: number; failed: number }, skipped: number) {
+  const headers = ["Added", "Updated", "Removed", "Skipped", "Failed"] as const;
+  const rows = [[summary.added, summary.updated, summary.removed, skipped, summary.failed].map(String)];
+  renderTable(headers as unknown as string[], rows);
+}
+
+function renderTable(headers: string[], rows: string[][]) {
+  const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)));
+  const line = (cols: string[]) =>
+    cols
+      .map((c, i) => c.padEnd(widths[i], " "))
+      .join("  |  ");
+  console.log(line(headers));
+  console.log(widths.map((w) => "".padEnd(w, "-")).join("--+--"));
+  for (const r of rows) console.log(line(r));
 }

@@ -72,5 +72,34 @@ export function registerDoctorCommand(program: Command) {
       };
 
       console.log(JSON.stringify(report, null, 2));
+      // Human-friendly summary
+      console.log("Doctor Summary:");
+      const headers = ["Item", "Value"] as const;
+      const rows: Array<[string, string]> = [
+        ["Client", report.client],
+        ["CLI Available", String(report.cli?.available ?? false)],
+        ["Project Path", String(report.project?.path ?? "")],
+        ["Project R/W", `${report.project?.readable ? "R" : "-"}${report.project?.writable ? "W" : "-"}`],
+        ["User Path", String(report.user?.path ?? "")],
+        ["User R/W", `${report.user?.readable ? "R" : "-"}${report.user?.writable ? "W" : "-"}`],
+        ["Conflicts", report.conflicts && report.conflicts.length > 0 ? report.conflicts.join(", ") : "none"],
+        ["Status", report.status],
+      ];
+      const w = (i: 0 | 1) => Math.max(headers[i].length, ...rows.map((r) => r[i].length));
+      const widths = [w(0), w(1)] as const;
+      const pad = (s: string, i: 0 | 1) => s.padEnd(widths[i], " ");
+      const line = (a: string, b: string) => console.log(`${pad(a, 0)}  |  ${pad(b, 1)}`);
+      line(headers[0], headers[1]);
+      console.log(`${"".padEnd(widths[0], "-")}--+--${"".padEnd(widths[1], "-")}`);
+      for (const [a, b] of rows) line(a, b);
+      const recs: string[] = [];
+      if (!cliAvailable) recs.push("Install or expose client CLI in PATH.");
+      if (!projectCheck.writable) recs.push("Make project .mcp.json writable or run with appropriate permissions.");
+      if (userCheck && userCheck.writable === false) recs.push("Fix user settings permissions.");
+      if (conflicts.length > 0) recs.push("Resolve project/user conflicts or run install with desired scope.");
+      if (recs.length > 0) {
+        console.log("Recommendations:");
+        for (const r of recs) console.log(`- ${r}`);
+      }
     });
 }

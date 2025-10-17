@@ -46,8 +46,8 @@ describe("kc doctor", () => {
 			await program.parseAsync(["node", "cli", "doctor", "--client", "claude-code"], { from: "node" });
 			cwdSpy.mockRestore();
 			spy.mockRestore();
-			const payload = JSON.parse(logs[0] ?? "{}");
-			expect(payload.status).toBe("ok");
+      const payload = JSON.parse(logs[0] ?? "{}");
+      expect(payload.status).toBe("ok");
 			expect(payload.client).toBe("claude-code");
 			expect(payload.conflicts).toEqual([]);
       expect(payload.project.readable).toBeTypeOf("boolean");
@@ -99,7 +99,9 @@ describe("kc doctor", () => {
 			expect(Array.isArray(payload.conflicts)).toBe(true);
 			expect(payload.conflicts.length).toBe(1);
 			expect(payload.cli.available).toBe(false);
-			expect(payload.user.writable).toBe(false);
+      expect(payload.user.writable).toBe(false);
+      // human summary markers present
+      expect(logs.some((l) => typeof l === "string" && String(l).includes("Doctor Summary:"))).toBe(true);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}
