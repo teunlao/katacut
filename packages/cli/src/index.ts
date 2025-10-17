@@ -6,6 +6,7 @@ import { registerInstallCommand } from "./commands/install.js";
 import { registerMcpCommand } from "./commands/mcp/index.js";
 import { registerDoctorCommand } from "./commands/doctor.js";
 import { registerLockCommand } from "./commands/lock.js";
+import { registerCiCommand } from "./commands/ci.js";
 
 const program = new Command();
 
@@ -17,6 +18,7 @@ registerInstallCommand(program);
 registerMcpCommand(program);
 registerDoctorCommand(program);
 registerLockCommand(program);
+registerCiCommand(program);
 
 program.parseAsync(process.argv).catch((error) => {
 	console.error(error instanceof Error ? error.message : String(error));
