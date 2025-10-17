@@ -5,6 +5,6 @@
 		"outDir": "dist",
 		"rootDir": "src"
 	},
-	"include": ["src/**/*", "vitest.config.ts"],
-	"references": [{ "path": "../schema" }]
+    "include": ["src/**/*", "vitest.config.ts"],
+    "references": [{ "path": "../schema" }, { "path": "../utils" }]
 }

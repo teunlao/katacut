@@ -14,16 +14,6 @@
         "."
       ],
       "env": {}
-    },
-    "demo": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "."
-      ],
-      "env": {}
     }
   }
 }

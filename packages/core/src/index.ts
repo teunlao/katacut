@@ -34,3 +34,5 @@ export type {
   ApplyResultSummary,
 } from "./ports/adapters.js";
 export { diffByNames, diffDesiredCurrent } from "./plan/diff.js";
+export type { Lockfile, LockEntry } from "./lock/format.js";
+export { computeFingerprint, buildLock, verifyLock } from "./lock/format.js";
