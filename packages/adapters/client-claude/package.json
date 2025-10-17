@@ -1,18 +1,11 @@
 {
-  "name": "@katacut/cli",
+  "name": "@katacut/adapter-client-claude",
   "version": "0.0.0",
   "private": true,
   "type": "module",
-  "bin": {
-    "katacut": "./bin/katacut.mjs",
-    "kc": "./bin/katacut.mjs"
-  },
   "exports": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": [
-    "bin",
-    "dist"
-  ],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
     "lint": "biome lint .",
@@ -21,10 +14,8 @@
     "dev": "tsc --build tsconfig.build.json --watch"
   },
   "dependencies": {
-    "@katacut/core": "workspace:*",
     "@katacut/schema": "workspace:*",
-    "@katacut/adapter-client-claude": "workspace:*",
-    "@katacut/utils": "workspace:*",
-    "commander": "^12.1.0"
+    "@katacut/utils": "workspace:*"
   }
 }
+

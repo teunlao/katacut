@@ -79,4 +79,4 @@ export function parseConfig(source: string): ConfigValidationResult {
 	};
 }
 
-export type { KatacutConfig } from "./types.js";
+export type { KatacutConfig, McpServerConfig } from "./types.js";
