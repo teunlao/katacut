@@ -1,5 +1,6 @@
 import type { ErrorObject } from "ajv";
 import { Ajv } from "ajv";
+import addFormats from "ajv-formats";
 import { type ParseError, parse, printParseErrorCode } from "jsonc-parser";
 
 import schemaJson from "./schema.json" with { type: "json" };
@@ -20,6 +21,8 @@ const ajv = new Ajv({
 	allowUnionTypes: true,
 	strict: false,
 });
+
+(addFormats as unknown as (ajv: Ajv) => void)(ajv);
 
 const validate = ajv.compile<KatacutConfig>(schemaJson as unknown as Record<string, unknown>);
 

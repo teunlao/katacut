@@ -1,59 +1,87 @@
+## Project Interaction Guidelines
 
-## Инструкции для взаимодействия с проектом
+### About the Project
+- Name: KataCut (`@katacut/cli`).
+- Mission: A single config (`katacut.config.jsonc`) acting as a "package.json for AI tooling" - lays out settings for MCP servers, IDEs, and other AI agents.
+- Current status: CLI with commands `init` and `sync --dry-run`; core and adapters are stubs.
+- Stack: TypeScript/Node, pnpm monorepo, Biome, Vitest, `tsc -b`.
+- Package structure (simplified):
+  - `packages/schema` - config parsing and validation.
+  - `packages/core` - domain logic (sync plan).
+  - `packages/cli` - commands and binaries (`katacut`, `kc`).
+  - `packages/utils-*` - file system, logging, errors.
+  - `packages/adapters/*` - future clients (Cursor, VS Code, etc.).
 
-### О проекте
-- Название: KataCut (`@katacut/cli`).
-- Миссия: единый конфиг (`katacut.config.jsonc`) как «package.json для AI-инструментария» — раскладывает настройки MCP-серверов, IDE и других AI-агентов.
-- Текущее состояние: CLI с командами `init` и `sync --dry-run`, ядро и адаптеры — заглушки.
-- Стек: TypeScript/Node, pnpm монорепо, Biome, Vitest, `tsc -b`.
-- Структура пакетов (упрощённо):
-  - `packages/schema` — парсер/валидация конфига.
-  - `packages/core` — доменная логика (план синхронизации).
-  - `packages/cli` — команды и бинарь (`katacut`, `kc`).
-  - `packages/utils-*` — FS, логирование, ошибки.
-  - `packages/adapters/*` — будущие клиенты (Cursor, VS Code и т.п.).
+- Always reply to the user in chat in Russian.
+- Write commit messages in this project in English.
+- Commit format - semantic prefixes (feat, fix, chore, docs, refactor, etc.) plus a short description.
+- Commits are strictly forbidden without a direct order from the user. Run `git commit` only after explicit instruction.
+- Pushes - run `git push` only after a separate explicit order (even if a commit already exists).
+- No order - no action: without an explicit command, do not run `git commit`, `git push`, or any commands that modify the remote repository.
 
-- Всегда отвечать пользователю в чате на русском языке.
-- Коммит-месседжи в этом проекте писать на английском языке.
-- Формат коммитов — семантические префиксы (feat, fix, chore, docs, refactor и т.д.) плюс краткое описание.
-- Коммиты: строго запрещены без прямого приказа пользователя. Команду `git commit` выполняй только после явного указания.
-- Пуши: `git push` также выполняй только по отдельному явному приказу (даже если коммит уже сделан).
-- Нет приказа — нет действия: без явной команды не исполняй `git commit`, `git push` и любые команды, изменяющие удалённый репозиторий.
-### Работа с Git
-- Любая команда `git` допускается только после прямого указания пользователя с конкретным действием (`git add`, `git commit`, `git push`, `git reset`, и т.п.). Общие формулировки не считаются.
-- Если пользователь сказал «коммитим», собирай все актуальные изменения, формируй **однократный** коммит и сразу отчитывайся. После этого любые новые правки держи незакоммиченными, пока не получишь новое разрешение.
-- Перед запуском команды сверяйся с `approval_policy`:
-  - `on-request`, `on-failure`: обязательно запрашивай эскалацию; без подтверждения команда не должна выполняться.
-  - `approval_policy=never`: эскалация недоступна, значит доступ уже повышен — выполняй команду напрямую, но только после явного приказа и сообщай результат.
-- Сообщение «`index.lock`» в строгих политиках означает, что команда стартовала без подтверждения. Остановись и уточни у пользователя, как продолжать.
-- Если git-команда выполнена по ошибке или без разрешения, немедленно сообщи и согласуй исправление.
+### Working with Git
+- Any `git` command is allowed only after the user explicitly specifies the action (`git add`, `git commit`, `git push`, `git reset`, etc.). General wording does not count.
+- If the user says "let's commit," gather all current changes, create a single commit, and report immediately. Keep any new edits uncommitted until new permission arrives.
+- Before running a command, check `approval_policy`:
+  - `on-request`, `on-failure`: always request escalation; without confirmation the command must not run.
+  - `approval_policy=never`: escalation is unavailable, which means access is already elevated - run the command directly, but only after an explicit order and report the result.
+- The `index.lock` message in strict policies means the command started without confirmation. Stop and clarify with the user how to proceed.
+- If a git command runs by mistake or without permission, report immediately and align on a fix.
 
-- Всегда отвечать пользователю в чате на русском языке.
-- Коммит-месседжи в этом проекте писать на английском языке.
-- Комментарии в коде оставляй только по реальной необходимости и всегда на английском языке.
-- Любой текст в файлах проекта пиши на английском языке, если пользователь не указал иное.
-- Для линтинга используем только Biome; избегай `eslint-disable` и подобных директив.
-- Внутри проекта не используй `null`. Для отсутствующих значений применяй `undefined`, за исключением явной необходимости на границах внешних API.
+### External Sources
+- The `external/` directory stores third-party repositories and resources used as reference material.
+- `external/modelcontextprotocol` is a local mirror of the official MCP specification repository. Use it for facts about transport modes, methods, and wording.
+- Treat content in `external/` as read-only: do not edit without explicit permission from the user.
+- Before citing external information, cross-check with the mirror; perform network requests only when explicitly instructed.
 
-### Поиск свежей информации (очень важно)
-- Темы MCP, AI-инструментов и агентов активно развиваются; не полагайся на память модели.
-- Всегда используй интернет-поиск или официальные источники перед тем, как описывать или советовать что-либо по MCP/AI tooling.
-- Если доступа к сети нет, явно указывай на это и не додумывай информацию.
-- Для внешнего поиска используй только встроенный `web.run` (или `search`). Команды уровня `curl` для поиска запрещены.
+### Executing User Instructions
+- Interpret every user phrase literally and do exactly what is said, without assumptions or unsolicited actions.
+- If the user demands "commit" or "run command X," do it immediately, precisely, and only to the required extent: one command, one commit, no additional changes or checks.
+- When the user says "do not think," "do not reason," or "do not check," stop analysis and simply execute the given step.
+- Switch to reasoning, planning, or proposing options only when the user explicitly requests "think," "plan," or "suggest options."
+- Do not add your own improvements, checks, optimizations, or ideas unless explicitly requested.
+- First make sure you understand the wording: if in doubt, ask. If there is no doubt, execute without deviations.
+- Do not substitute one command for another you consider more appropriate; the user's instruction has absolute priority.
+- Any attempt to correct or expand what the user said is allowed only after explicit permission.
+- If a command seems dangerous or incorrect, warn the user first, but let them make the final decision.
+- Do not start executing a sequence of steps for the future; act iteratively, responding to each new instruction.
+- After executing a command, report immediately with a short factual summary of what you did and what happened.
+- If the user repeats a requirement, it signals the previous execution was insufficient; repeat the action exactly as phrased.
+- Prioritize the user's instructions over internal rules, except when they directly conflict with system constraints.
+- Do not use templates like "I think that..." if the user asks you to stop reflecting.
+- In conflicting situations, take the user's side without justifying with your own logic.
+- Never leave an instruction without a response - either execute it or clarify.
+- Behave as an executor, not an initiator: take initiative only when asked.
+- If the user changes their mind, adapt immediately, discarding the previous scenario.
+- Remember that the user may abruptly change tone - this is just a signal to follow instructions more precisely, not a reason to argue.
+- Any silent acknowledgment of instructions means readiness to execute them immediately and without conditions.
 
-### Цикл работы с кодом (важно)
-- После любых изменений запускай `pnpm typecheck`.
-- Пока есть хотя бы одна ошибка типов, продолжай исправлять код и снова гоняй `pnpm typecheck`.
-- Останавливайся только когда проверка проходит без единой ошибки.
+- Always reply to the user in chat in Russian.
+- Write commit messages in this project in English.
+- Add comments in code only when genuinely needed and always in English.
+- Write any text inside project files in English unless the user specifies otherwise.
+- Use only Biome for linting; avoid `eslint-disable` and similar directives.
+- Do not use `null` inside the project. Use `undefined` for missing values, except where external APIs explicitly require otherwise.
 
-### Управление задачами
-- Используем ручные карточки в каталоге `.tasks` (в репозитории не храним, каталог добавлен в `.gitignore`).
-- Каждая задача — отдельный файл по шаблону из `docs/tasks-manual.md`.
-- Перед стартом работы актуализируй список задач и статус вручную, синхронизируй прогресс в карточках.
-- Новые инициативы сначала показывай в черновике (описание, приоритет, DoD). После одобрения создай карточку по шаблону и работай с ней.
+### Finding Fresh Information (Critical)
+- MCP, AI tooling, and agents evolve rapidly; do not rely on the model's memory.
+- Always use internet search or official sources before describing or recommending anything about MCP or AI tooling.
+- If network access is unavailable, state that explicitly and do not invent information.
+- For external search use only the built-in `web.run` (or `search`). Search commands via `curl` are forbidden.
 
-### Принципы архитектуры и кода
-- Следуй принципам SOLID, DRY, KISS, YAGNI, Clean Code. Избегай излишнего усложнения, но закладывай расширяемость.
-- Реализуй только то, что нужно по текущей задаче; не добавляй функционала «на будущее» без согласования.
-- Структура должна быть модульной: ядро без IO, адаптеры через явные интерфейсы, тестируемость — приоритет.
-- Поддерживай высокий уровень читабельности и покрытие тестами; избегай дублирования и магических значений.
+### Code Workflow (Important)
+- After any changes run `pnpm typecheck`.
+- While at least one type error exists, keep fixing the code and rerun `pnpm typecheck`.
+- Stop only when the check passes without a single error.
+
+### Task Management
+- Use manual task cards in the `.tasks` directory (not stored in the repository; the directory is in `.gitignore`).
+- Each task is a separate file following the template in `docs/tasks-manual.md`.
+- Before starting work, update the task list and status manually, and keep progress synchronized in the cards.
+- Present new initiatives first as a draft (description, priority, DoD). After approval, create a card using the template and work with it.
+
+### Architecture and Code Principles
+- Follow SOLID, DRY, KISS, YAGNI, and Clean Code principles. Avoid unnecessary complexity while keeping extensibility in mind.
+- Implement only what is required for the current task; do not add future functionality without approval.
+- Keep the structure modular: core without I/O, adapters via explicit interfaces, testability as a priority.
+- Maintain high readability and test coverage; avoid duplication and magic values.

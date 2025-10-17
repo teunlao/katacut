@@ -4,7 +4,6 @@ export default defineConfig({
 	test: {
 		globals: true,
 		passWithNoTests: true,
-		pool: "threads",
-		reporters: ["basic"]
+		pool: "threads"
 	}
 });
