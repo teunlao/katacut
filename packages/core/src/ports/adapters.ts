@@ -35,6 +35,13 @@ export interface ApplyResultSummary {
   readonly failed: number;
 }
 
+export interface AdapterCapabilities {
+  readonly supportsProject: boolean;
+  readonly supportsUser: boolean;
+  readonly emulateProjectWithUser: boolean;
+  readonly supportsGlobalExplicit: boolean;
+}
+
 export interface ClientAdapter {
   readonly id: string;
   readProject(cwd?: string): Promise<ReadMcpResult>;
@@ -42,5 +49,5 @@ export interface ClientAdapter {
   desiredFromConfig(config: unknown): Record<string, ServerJson>;
   applyInstall(plan: readonly InstallStep[], scope: Scope, cwd?: string): Promise<ApplyResultSummary>;
   checkAvailable?(): Promise<boolean>;
+  capabilities?(): Promise<AdapterCapabilities> | AdapterCapabilities;
 }
-

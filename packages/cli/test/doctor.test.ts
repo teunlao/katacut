@@ -16,18 +16,19 @@ describe("kc doctor", () => {
 				"utf8",
 			);
 
-			vi.doMock("../src/lib/adapters/registry.ts", () => {
-				const adapter = {
-					id: "claude-code",
-					checkAvailable: async () => true,
-					readProject: async () => ({ mcpServers: { a: { type: "http", url: "https://a" } } }),
-					readUser: async () => ({
-						source: join(dir, "user.json"),
-						mcpServers: { b: { type: "stdio", command: "echo" } },
-					}),
-				} as const;
-				return { getAdapter: async () => adapter };
-			});
+      vi.doMock("../src/lib/adapters/registry.ts", () => {
+        const adapter = {
+          id: "claude-code",
+          capabilities: () => ({ supportsProject: true, supportsUser: true, emulateProjectWithUser: false, supportsGlobalExplicit: false }),
+          checkAvailable: async () => true,
+          readProject: async () => ({ mcpServers: { a: { type: "http", url: "https://a" } } }),
+          readUser: async () => ({
+            source: join(dir, "user.json"),
+            mcpServers: { b: { type: "stdio", command: "echo" } },
+          }),
+        } as const;
+        return { getAdapter: async () => adapter };
+      });
 			await writeFile(
 				join(dir, "user.json"),
 				JSON.stringify({ mcpServers: { b: { type: "stdio", command: "echo" } } }),
@@ -49,8 +50,9 @@ describe("kc doctor", () => {
 			expect(payload.status).toBe("ok");
 			expect(payload.client).toBe("claude-code");
 			expect(payload.conflicts).toEqual([]);
-			expect(payload.project.readable).toBeTypeOf("boolean");
-			expect(payload.project.writable).toBeTypeOf("boolean");
+      expect(payload.project.readable).toBeTypeOf("boolean");
+      expect(payload.project.writable).toBeTypeOf("boolean");
+      expect(payload.capabilities.supportsProject).toBe(true);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}
@@ -69,15 +71,16 @@ describe("kc doctor", () => {
 			await writeFile(userPath, JSON.stringify({ mcpServers: { c: { type: "http", url: "https://user" } } }), "utf8");
 			await chmod(userPath, 0o444); // read-only
 
-			vi.doMock("../src/lib/adapters/registry.ts", () => {
-				const adapter = {
-					id: "claude-code",
-					checkAvailable: async () => false,
-					readProject: async () => ({ mcpServers: { c: { type: "http", url: "https://proj" } } }),
-					readUser: async () => ({ source: userPath, mcpServers: { c: { type: "http", url: "https://user" } } }),
-				} as const;
-				return { getAdapter: async () => adapter };
-			});
+      vi.doMock("../src/lib/adapters/registry.ts", () => {
+        const adapter = {
+          id: "claude-code",
+          capabilities: () => ({ supportsProject: true, supportsUser: true, emulateProjectWithUser: false, supportsGlobalExplicit: false }),
+          checkAvailable: async () => false,
+          readProject: async () => ({ mcpServers: { c: { type: "http", url: "https://proj" } } }),
+          readUser: async () => ({ source: userPath, mcpServers: { c: { type: "http", url: "https://user" } } }),
+        } as const;
+        return { getAdapter: async () => adapter };
+      });
 
 			const { registerDoctorCommand } = await import("../src/commands/doctor.ts");
 			const program = new Command();

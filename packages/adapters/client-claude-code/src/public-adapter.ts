@@ -14,6 +14,14 @@ import { ensureClaudeAvailable } from "./cli.js";
 
 export const claudeCodeAdapter: ClientAdapter = {
   id: "claude-code",
+  capabilities() {
+    return {
+      supportsProject: true,
+      supportsUser: true,
+      emulateProjectWithUser: false,
+      supportsGlobalExplicit: false,
+    };
+  },
   async readProject(cwd?: string): Promise<ReadMcpResult> {
     return readProjectMcp(cwd);
   },

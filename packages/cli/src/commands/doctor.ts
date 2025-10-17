@@ -13,6 +13,12 @@ interface DoctorReport {
   readonly project?: { readonly path: string; readonly readable?: boolean; readonly writable?: boolean };
   readonly user?: { readonly path?: string; readonly readable?: boolean; readonly writable?: boolean };
   readonly conflicts?: readonly string[];
+  readonly capabilities?: {
+    readonly supportsProject: boolean;
+    readonly supportsUser: boolean;
+    readonly emulateProjectWithUser: boolean;
+    readonly supportsGlobalExplicit: boolean;
+  };
   readonly status: "ok" | "warn" | "error";
 }
 
@@ -35,6 +41,7 @@ export function registerDoctorCommand(program: Command) {
       const cwd = process.cwd();
 
       const cliAvailable = (await adapter.checkAvailable?.()) ?? true;
+      const caps = (await adapter.capabilities?.()) ?? { supportsProject: true, supportsUser: true, emulateProjectWithUser: false, supportsGlobalExplicit: false };
 
       const projectPath = join(cwd, ".mcp.json");
       const projectCheck = await checkPath(projectPath);
@@ -60,6 +67,7 @@ export function registerDoctorCommand(program: Command) {
         project: { path: projectCheck.path, readable: projectCheck.readable, writable: projectCheck.writable },
         user: userCheck ? { path: userCheck.path, readable: userCheck.readable, writable: userCheck.writable } : {},
         conflicts,
+        capabilities: caps,
         status,
       };
 

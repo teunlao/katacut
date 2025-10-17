@@ -40,11 +40,30 @@ export function registerInstallCommand(program: Command) {
 			}
 
 			const config = await loadAndValidateConfig(options.config);
-			const scope: Scope = options.scope === "user" ? "user" : "project";
+			const requestedScope: Scope = options.scope === "user" ? "user" : "project";
 
 			const desired = adapter.desiredFromConfig(config);
 
-			// Prepare expected lock from desired state
+			// Resolve realized scope using adapter capabilities (prefer project, allow emulation if available)
+			let scope: Scope = requestedScope;
+			const caps = (await adapter.capabilities?.()) ?? {
+				supportsProject: true,
+				supportsUser: true,
+				emulateProjectWithUser: false,
+				supportsGlobalExplicit: false,
+			};
+			if (requestedScope === "project" && !caps.supportsProject) {
+				if (caps.emulateProjectWithUser && caps.supportsUser) {
+					scope = "user";
+					console.log(
+						"Note: adapter does not support project scope; applying in user scope (emulated project).",
+					);
+				} else {
+					throw new Error("Adapter does not support project scope and emulation is not allowed.");
+				}
+			}
+
+			// Prepare expected lock from desired state (for realized scope)
 			const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
 			const lockPath = resolve(cwd, "katacut.lock.json");
 
