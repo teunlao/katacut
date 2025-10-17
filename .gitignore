@@ -4,6 +4,8 @@ dist/
 **/dist/
 *.tsbuildinfo
 **/*.tsbuildinfo
+.gitmodules
+external/
 .DS_Store
 *.log
 npm-debug.log*

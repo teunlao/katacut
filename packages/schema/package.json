@@ -9,7 +9,8 @@
   "scripts": {
     "build": "tsc --build tsconfig.build.json",
     "lint": "biome lint .",
-    "test": "vitest",
+    "test": "vitest run --project schema --passWithNoTests",
+    "test:watch": "vitest --project schema --passWithNoTests",
     "typecheck": "tsc --project tsconfig.json --noEmit",
     "dev": "tsc --build tsconfig.build.json --watch"
   },
