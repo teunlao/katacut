@@ -23,5 +23,18 @@ describe("lockfile core", () => {
     expect(report.status).toBe("mismatch");
     expect(report.mismatches[0]?.reason).toBe("missing");
   });
-});
 
+  it("detects scope mismatch and extras", () => {
+    const lock = {
+      version: "1" as const,
+      client: "claude-code",
+      mcpServers: { a: { scope: "project" as const, fingerprint: computeFingerprint({ type: "http", url: "https://a" }) } },
+    };
+    const project = { mcpServers: {} } as const;
+    const user = { mcpServers: { a: { type: "http", url: "https://a" }, extraU: { type: "stdio", command: "echo" } } } as const;
+    const report = verifyLock(lock, project, user);
+    expect(report.status).toBe("mismatch");
+    expect(report.mismatches.find(m => m.name === "a" && m.reason === "scope")).toBeTruthy();
+    expect(report.mismatches.find(m => m.name === "extraU" && m.reason === "extra" && m.actual?.scope === "user")).toBeTruthy();
+  });
+});

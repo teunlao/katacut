@@ -2,13 +2,9 @@
   "version": "1",
   "client": "claude-code",
   "mcpServers": {
-    "github": {
+    "x": {
       "scope": "project",
-      "fingerprint": "830fb14f64ce1d0031b03b4a8e764167c28a3e997ea14f614336969c6663fe8b"
-    },
-    "fs": {
-      "scope": "project",
-      "fingerprint": "09384267e4bb55f9c89e9da9d1c840c33e6515c5f0976a3b86a04cc8e7d32564"
+      "fingerprint": "cf4cf6ca647503c8882b2f105a795e529cc8001d10d8644a88dd54a931c7c0c2"
     }
   }
 }

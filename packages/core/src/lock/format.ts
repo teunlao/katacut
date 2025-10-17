@@ -23,9 +23,9 @@ export function buildLock(client: string, desired: Record<string, ServerJson>, s
 
 export interface VerifyMismatch {
   readonly name: string;
-  readonly expectedScope: Scope;
+  readonly expectedScope?: Scope;
   readonly actual?: { readonly scope?: Scope; readonly fingerprint?: string };
-  readonly reason: "missing" | "fingerprint" | "scope";
+  readonly reason: "missing" | "fingerprint" | "scope" | "extra";
 }
 
 export interface VerifyReport {
@@ -39,7 +39,12 @@ export function verifyLock(lock: Lockfile, project: ReadMcpResult, user: ReadMcp
   for (const [name, entry] of Object.entries(lock.mcpServers)) {
     const currentJson = entry.scope === "project" ? project.mcpServers[name] : user.mcpServers[name];
     if (!currentJson) {
-      mismatches.push({ name, expectedScope: entry.scope, reason: "missing" });
+      const other = entry.scope === "project" ? user.mcpServers[name] : project.mcpServers[name];
+      if (other) {
+        mismatches.push({ name, expectedScope: entry.scope, actual: { scope: entry.scope === "project" ? "user" : "project" }, reason: "scope" });
+      } else {
+        mismatches.push({ name, expectedScope: entry.scope, reason: "missing" });
+      }
       continue;
     }
     const fp = computeFingerprint(currentJson);
@@ -47,6 +52,13 @@ export function verifyLock(lock: Lockfile, project: ReadMcpResult, user: ReadMcp
       mismatches.push({ name, expectedScope: entry.scope, actual: { scope: entry.scope, fingerprint: fp }, reason: "fingerprint" });
     }
   }
+  // Extras present in current state but absent in lock
+  const lockNames = new Set(Object.keys(lock.mcpServers));
+  for (const name of Object.keys(project.mcpServers)) {
+    if (!lockNames.has(name)) mismatches.push({ name, actual: { scope: "project" }, reason: "extra" });
+  }
+  for (const name of Object.keys(user.mcpServers)) {
+    if (!lockNames.has(name)) mismatches.push({ name, actual: { scope: "user" }, reason: "extra" });
+  }
   return { client: lock.client, status: mismatches.length === 0 ? "ok" : "mismatch", mismatches };
 }
-

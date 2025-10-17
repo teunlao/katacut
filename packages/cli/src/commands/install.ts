@@ -1,10 +1,10 @@
+import { readFile, writeFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import type { Scope } from "@katacut/core";
-import { diffDesiredCurrent, buildLock, type Lockfile } from "@katacut/core";
+import { buildLock, diffDesiredCurrent, type Lockfile } from "@katacut/core";
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../lib/config.js";
-import { resolve } from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
 
 export interface InstallOptions {
 	readonly config?: string;
@@ -13,9 +13,9 @@ export interface InstallOptions {
 
 	readonly dryRun?: boolean;
 	readonly prune?: boolean;
-  readonly writeLock?: boolean;
-  readonly frozenLock?: boolean;
-  readonly lockfileOnly?: boolean;
+	readonly writeLock?: boolean;
+	readonly frozenLock?: boolean;
+	readonly lockfileOnly?: boolean;
 }
 
 export function registerInstallCommand(program: Command) {
@@ -23,7 +23,7 @@ export function registerInstallCommand(program: Command) {
 		.command("install")
 		.description("Install (apply) configuration to target client via MCP")
 		.option("-c, --config <path>", "path to configuration file", undefined)
-		.option("--scope <scope>", "Scope: user|project (default: user)")
+		.option("--scope <scope>", "Scope: user|project (default: project)")
 		.option("--client <id>", "Client id (default: claude-code)")
 		.option("--dry-run", "print plan without changes", false)
 		.option("--prune", "remove servers not present in config", false)
@@ -40,39 +40,39 @@ export function registerInstallCommand(program: Command) {
 			}
 
 			const config = await loadAndValidateConfig(options.config);
-			const scope: Scope = options.scope === "project" ? "project" : "user";
+			const scope: Scope = options.scope === "user" ? "user" : "project";
 
 			const desired = adapter.desiredFromConfig(config);
 
-      // Prepare expected lock from desired state
-      const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
-      const lockPath = resolve(cwd, "katacut.lock.json");
+			// Prepare expected lock from desired state
+			const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+			const lockPath = resolve(cwd, "katacut.lock.json");
 
-      // Frozen lock: require existing lock to match desired, otherwise exit with code 1
-      if (options.frozenLock) {
-        try {
-          const text = await readFile(lockPath, "utf8");
-          const currentLock = JSON.parse(text) as Lockfile;
-          const sameClient = currentLock.client === expectedLock.client;
-          const sameEntries = JSON.stringify(currentLock.mcpServers) === JSON.stringify(expectedLock.mcpServers);
-          if (!sameClient || !sameEntries) {
-            console.error("Frozen lock mismatch: lockfile does not match desired configuration.");
-            process.exitCode = 1;
-            return;
-          }
-        } catch {
-          console.error("Frozen lock mismatch: lockfile is missing or unreadable.");
-          process.exitCode = 1;
-          return;
-        }
-      }
+			// Frozen lock: require existing lock to match desired, otherwise exit with code 1
+			if (options.frozenLock) {
+				try {
+					const text = await readFile(lockPath, "utf8");
+					const currentLock = JSON.parse(text) as Lockfile;
+					const sameClient = currentLock.client === expectedLock.client;
+					const sameEntries = JSON.stringify(currentLock.mcpServers) === JSON.stringify(expectedLock.mcpServers);
+					if (!sameClient || !sameEntries) {
+						console.error("Frozen lock mismatch: lockfile does not match desired configuration.");
+						process.exitCode = 1;
+						return;
+					}
+				} catch {
+					console.error("Frozen lock mismatch: lockfile is missing or unreadable.");
+					process.exitCode = 1;
+					return;
+				}
+			}
 
-      // Lockfile-only: write lock and exit without applying
-      if (options.lockfileOnly) {
-        await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-        console.log(`Wrote lockfile: ${lockPath}`);
-        return;
-      }
+			// Lockfile-only: write lock and exit without applying
+			if (options.lockfileOnly) {
+				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+				console.log(`Wrote lockfile: ${lockPath}`);
+				return;
+			}
 
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);
@@ -92,12 +92,15 @@ export function registerInstallCommand(program: Command) {
 			console.log(
 				`Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
 			);
-			if (summary.failed > 0) { process.exitCode = 1; return; }
+			if (summary.failed > 0) {
+				process.exitCode = 1;
+				return;
+			}
 
-      // Write lock by default (unless suppressed) after successful apply
-      if (options.writeLock !== false) {
-        await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-        console.log(`Updated lockfile: ${lockPath}`);
-      }
+			// Write lock by default (unless suppressed) after successful apply
+			if (options.writeLock !== false) {
+				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+				console.log(`Updated lockfile: ${lockPath}`);
+			}
 		});
 }
