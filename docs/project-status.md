@@ -34,16 +34,17 @@ KataCut — «единая точка правды» для инструмент
 ## Новое (диагностика/lock/CI, мультиклиенты)
 - Диагностика: `kc doctor --client <id>` — JSON‑отчёт (CLI доступность, права на пути project/user, конфликты, capabilities, рекомендации). Есть краткий «Doctor Summary».
 - Lockfile v1: `katacut.lock.json` теперь содержит `clients: string[]` + `mcpServers`.
-  - Нормализация перед snapshot: у HTTP пустые заголовки удаляются (исключает ложные fingerprint‑различия).
+  - Нормализация перед snapshot: у HTTP пустые заголовки и у STDIO пустой `env` удаляются (исключает ложные fingerprint‑различия).
   - Команды:
     - `kc lock generate --clients a,b` — сформировать lock по конфигу без применения.
     - `kc lock verify --client a` — сверка lock↔состояние.
     - `kc ci --client a` — сверка с кодами выхода для CI.
-- Поведение `kc install`:
+- Поведение `kc install` (полностью мультиклиентное):
+  - Работает по списку `clients` во всех режимах: обычный, `--lockfile-only`, `--from-lock`, `--frozen-lockfile`.
   - По умолчанию после успешного применения обновляет lockfile.
   - `--no-write-lock` — не трогать lock.
-  - `--frozen-lock`/`--frozen-lockfile` — требует точное соответствие lock: при совпадении применяет строго по lock и ничего не пишет.
-  - `--lockfile-only` — генерирует/обновляет lock и выходит.
+  - `--frozen-lock`/`--frozen-lockfile` — при совпадении с конфигом применяет строго по lock (план печатается для каждого клиента) и ничего не пишет.
+  - `--lockfile-only` — генерирует/обновляет lock и выходит (в lock фиксируется массив `clients`).
 
 ## План исследований (lockfile и пакетные менеджеры)
 - Изучение поведения lock у пакетных менеджеров (pnpm/npm/yarn):
@@ -139,7 +140,7 @@ KataCut — «единая точка правды» для инструмент
 - Удалены все артефакты (`katacut.config.jsonc`, `katacut.lock.json`, `.katacut/`, `.mcp.json`, `.gemini/settings.json`, `~/.gemini/settings.json`).
 - Свежий конфиг с `clients: ["claude-code","gemini-cli"]` и тремя целями (github/http, fs/stdio, memory‑journal/http).
 - `kc install --scope project` → оба клиента: `ADD` по трём целям; lock записан.
-- `kc lock verify` / `kc ci` → OK у обоих.
+- `kc lock verify` / `kc ci` → OK у обоих (если в user‑профиле не осталось «лишних» записей; при необходимости удалить их локально). 
 - Внедрили «мусор» в файлы клиентов и выполнили `kc install --prune` → все лишние записи удалены (при необходимости — через fallback с `.bak`).
 - Контрольный `kc ci` / `kc lock verify` / `kc install --from-lock --dry-run` / `kc install --frozen-lockfile` → везде OK (только `SKIP`).
 
