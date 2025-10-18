@@ -1,2 +1,1 @@
-export { geminiCliAdapter } from "./public-adapter.js";
-
+export { geminiCliAdapter } from './public-adapter.js';

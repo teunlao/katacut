@@ -1,5 +1,5 @@
-import type { ResolvedFormat } from "./format.js";
-import { renderTable } from "./table.js";
+import type { ResolvedFormat } from './format.js';
+import { renderTable } from './table.js';
 
 export function printTableSection(
 	title: string,

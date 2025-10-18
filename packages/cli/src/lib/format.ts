@@ -18,7 +18,7 @@ export interface ResolvedFormat {
  */
 export function resolveFormatFlags(argv: readonly string[], opts: FormatOptions): ResolvedFormat {
 	const rawHas = (flag: string) => argv.includes(flag);
-	const json = Boolean(opts.json) || rawHas("--json");
-	const noSummary = Boolean(opts.noSummary) || rawHas("--no-summary");
+	const json = Boolean(opts.json) || rawHas('--json');
+	const noSummary = Boolean(opts.noSummary) || rawHas('--no-summary');
 	return { json, noSummary };
 }

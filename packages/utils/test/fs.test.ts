@@ -1,11 +1,11 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { readConfigFile, readTextFile } from "@katacut/utils";
-import { describe, expect, it } from "vitest";
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { readConfigFile, readTextFile } from '@katacut/utils';
+import { describe, expect, it } from 'vitest';
 
 async function withTempDir<T>(fn: (dir: string) => Promise<T>) {
-	const dir = await mkdtemp(join(tmpdir(), "kc-utils-"));
+	const dir = await mkdtemp(join(tmpdir(), 'kc-utils-'));
 	try {
 		return await fn(dir);
 	} finally {
@@ -13,20 +13,20 @@ async function withTempDir<T>(fn: (dir: string) => Promise<T>) {
 	}
 }
 
-describe("fs utils", () => {
-	it("reads text file with cwd", async () =>
+describe('fs utils', () => {
+	it('reads text file with cwd', async () =>
 		withTempDir(async (dir) => {
-			const file = join(dir, "a.txt");
-			await writeFile(file, "hello", "utf8");
-			const data = await readTextFile("a.txt", { cwd: dir });
-			expect(data).toBe("hello");
+			const file = join(dir, 'a.txt');
+			await writeFile(file, 'hello', 'utf8');
+			const data = await readTextFile('a.txt', { cwd: dir });
+			expect(data).toBe('hello');
 		}));
 
-	it("readConfigFile proxies to readTextFile", async () =>
+	it('readConfigFile proxies to readTextFile', async () =>
 		withTempDir(async (dir) => {
-			const file = join(dir, "c.jsonc");
-			await writeFile(file, '{\n  "x": 1\n}', "utf8");
-			const data = await readConfigFile("c.jsonc", { cwd: dir });
+			const file = join(dir, 'c.jsonc');
+			await writeFile(file, '{\n  "x": 1\n}', 'utf8');
+			const data = await readConfigFile('c.jsonc', { cwd: dir });
 			expect(JSON.parse(data)).toEqual({ x: 1 });
 		}));
 });

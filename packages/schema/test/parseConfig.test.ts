@@ -1,62 +1,62 @@
-import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { readFile } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
-import { describe, expect, it } from "vitest";
+import { describe, expect, it } from 'vitest';
 
-import { parseConfig } from "../src/index.js";
+import { parseConfig } from '../src/index.js';
 
-const fixture = (name: string) => readFile(resolve(__dirname, "__fixtures__", name), "utf8");
+const fixture = (name: string) => readFile(resolve(__dirname, '__fixtures__', name), 'utf8');
 
-describe("parseConfig", () => {
-	it("parses valid configuration", async () => {
-		const source = await fixture("valid-basic.jsonc");
+describe('parseConfig', () => {
+	it('parses valid configuration', async () => {
+		const source = await fixture('valid-basic.jsonc');
 		const result = parseConfig(source);
 		expect(result.issues).toHaveLength(0);
 		expect(result.config).toMatchObject({
-			version: "0.1.0",
+			version: '0.1.0',
 			mcp: {
-				github: { transport: "http", url: "https://api.example.com/mcp" },
+				github: { transport: 'http', url: 'https://api.example.com/mcp' },
 			},
 		});
 	});
 
-	it("parses stdio server configuration", async () => {
-		const source = await fixture("valid-stdio.jsonc");
+	it('parses stdio server configuration', async () => {
+		const source = await fixture('valid-stdio.jsonc');
 		const result = parseConfig(source);
 		expect(result.issues).toHaveLength(0);
-		expect(result.config?.mcp?.["local-server"]).toMatchObject({
-			transport: "stdio",
-			command: "npx",
-			args: ["-y", "example-server"],
+		expect(result.config?.mcp?.['local-server']).toMatchObject({
+			transport: 'stdio',
+			command: 'npx',
+			args: ['-y', 'example-server'],
 		});
 	});
 
-	it("reports validation errors", async () => {
-		const source = await fixture("invalid-missing-transport.jsonc");
+	it('reports validation errors', async () => {
+		const source = await fixture('invalid-missing-transport.jsonc');
 		const result = parseConfig(source);
 
 		expect(result.issues.length).toBeGreaterThan(0);
 		expect(result.issues[0].message).toMatch(/transport/);
 	});
 
-	it("requires url for http transport", async () => {
-		const source = await fixture("invalid-http-missing-url.jsonc");
+	it('requires url for http transport', async () => {
+		const source = await fixture('invalid-http-missing-url.jsonc');
 		const result = parseConfig(source);
 
 		expect(result.issues.length).toBeGreaterThan(0);
 		expect(result.issues[0].message).toMatch(/url/i);
 	});
 
-	it("requires command for stdio transport", async () => {
-		const source = await fixture("invalid-stdio-missing-command.jsonc");
+	it('requires command for stdio transport', async () => {
+		const source = await fixture('invalid-stdio-missing-command.jsonc');
 		const result = parseConfig(source);
 
 		expect(result.issues.length).toBeGreaterThan(0);
 		expect(result.issues[0].message).toMatch(/command/i);
 	});
 
-	it("reports parse errors", () => {
-		const result = parseConfig("{ invalid }");
+	it('reports parse errors', () => {
+		const result = parseConfig('{ invalid }');
 		expect(result.issues[0]?.message).toBeDefined();
 	});
 });

@@ -1,12 +1,12 @@
-import { constants } from "node:fs";
-import { access } from "node:fs/promises";
-import { resolve } from "node:path";
+import { constants } from 'node:fs';
+import { access } from 'node:fs/promises';
+import { resolve } from 'node:path';
 
 export const DEFAULT_CONFIG_FILENAMES = [
-	"katacut.config.jsonc",
-	"katacut.config.json",
-	"katacut.jsonc",
-	"katacut.json",
+	'katacut.config.jsonc',
+	'katacut.config.json',
+	'katacut.jsonc',
+	'katacut.json',
 ] as const;
 
 export interface ResolveConfigPathOptions {
@@ -24,7 +24,7 @@ export async function resolveConfigPath(options: ResolveConfigPathOptions = {}) 
 			await access(absolutePath, constants.F_OK);
 			return absolutePath;
 		} catch (error) {
-			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
+			if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
 				continue;
 			}
 			throw error;

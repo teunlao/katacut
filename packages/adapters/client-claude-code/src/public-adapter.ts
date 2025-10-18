@@ -1,11 +1,11 @@
-import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from "@katacut/core";
-import type { KatacutConfig, McpServerConfig } from "@katacut/schema";
-import { addOrUpdateClaudeServer, ensureClaudeAvailable, removeClaudeServer } from "./cli.js";
-import { readProjectMcp, readUserMcp } from "./files.js";
-import { toClaudeServerJson } from "./map.js";
+import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from '@katacut/core';
+import type { KatacutConfig, McpServerConfig } from '@katacut/schema';
+import { addOrUpdateClaudeServer, ensureClaudeAvailable, removeClaudeServer } from './cli.js';
+import { readProjectMcp, readUserMcp } from './files.js';
+import { toClaudeServerJson } from './map.js';
 
 export const claudeCodeAdapter: ClientAdapter = {
-	id: "claude-code",
+	id: 'claude-code',
 	capabilities() {
 		return {
 			supportsProject: true,
@@ -34,7 +34,7 @@ export const claudeCodeAdapter: ClientAdapter = {
 		let failed = 0;
 		for (const step of plan) {
 			try {
-				if (step.action === "remove") {
+				if (step.action === 'remove') {
 					const r = await removeClaudeServer(step.name, scope, cwd);
 					if (r.code === 0) removed++;
 					else failed++;
@@ -44,9 +44,14 @@ export const claudeCodeAdapter: ClientAdapter = {
 						failed++;
 						continue;
 					}
+					if (json.type === 'sse') {
+						// Claude Code does not support SSE directly; treat as failure for this client
+						failed++;
+						continue;
+					}
 					const r = await addOrUpdateClaudeServer(step.name, json, scope, cwd);
 					if (r.code === 0) {
-						if (step.action === "add") added++;
+						if (step.action === 'add') added++;
 						else updated++;
 					} else {
 						failed++;

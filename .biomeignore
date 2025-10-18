@@ -1,3 +1,7 @@
 **/dist/**
 **/*.tsbuildinfo
 .katacut/**
+external/**
+**/node_modules/**
+.git/**
+.tasks/**

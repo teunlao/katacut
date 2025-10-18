@@ -6,7 +6,7 @@ function sortDeep<T>(input: T): T {
 	if (Array.isArray(input)) {
 		return input.map((x) => sortDeep(x)) as unknown as T;
 	}
-	if (input && typeof input === "object") {
+	if (input && typeof input === 'object') {
 		const obj = input as Record<string, unknown>;
 		const out: Record<string, unknown> = {};
 		for (const key of Object.keys(obj).sort()) {

@@ -1,5 +1,5 @@
 export interface CursorSyncAction {
-	readonly type: "write" | "noop";
+	readonly type: 'write' | 'noop';
 	readonly target: string;
 }
 

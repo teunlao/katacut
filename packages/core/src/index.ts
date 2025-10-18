@@ -1,4 +1,4 @@
-import type { KatacutConfig } from "@katacut/schema";
+import type { KatacutConfig } from '@katacut/schema';
 
 export interface SyncPlanTarget {
 	readonly name: string;
@@ -13,7 +13,7 @@ export interface SyncPlan {
 export function createSyncPlan(config: KatacutConfig): SyncPlan {
 	const serverCount = Object.keys(config.mcp ?? {}).length;
 	const summary =
-		serverCount === 0 ? "No MCP servers to synchronize" : `Prepared synchronization for ${serverCount} MCP server(s)`;
+		serverCount === 0 ? 'No MCP servers to synchronize' : `Prepared synchronization for ${serverCount} MCP server(s)`;
 
 	return {
 		summary,
@@ -21,12 +21,12 @@ export function createSyncPlan(config: KatacutConfig): SyncPlan {
 	};
 }
 
-export type { ResolveConfigPathOptions } from "./config.js";
-export { DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from "./config.js";
-export type { LockEntry, Lockfile } from "./lock/format.js";
-export { buildLock, computeFingerprint, verifyLock, mergeLock } from "./lock/format.js";
-export type { Action, ActionKind } from "./plan/diff.js";
-export { diffByNames, diffDesiredCurrent } from "./plan/diff.js";
+export type { ResolveConfigPathOptions } from './config.js';
+export { DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from './config.js';
+export type { LockEntry, Lockfile } from './lock/format.js';
+export { buildLock, computeFingerprint, mergeLock, verifyLock } from './lock/format.js';
+export type { Action, ActionKind } from './plan/diff.js';
+export { diffByNames, diffDesiredCurrent } from './plan/diff.js';
 export type {
 	ApplyResultSummary,
 	ClientAdapter,
@@ -36,4 +36,4 @@ export type {
 	ServerJson,
 	ServerJsonHttp,
 	ServerJsonStdio,
-} from "./ports/adapters.js";
+} from './ports/adapters.js';

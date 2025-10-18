@@ -1,27 +1,21 @@
 {
-  "mcpServers": {
-    "mcp-server-filesystem": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@agent-infra/mcp-server-filesystem"
-      ]
-    },
-    "memory-mcp": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@letta-ai/memory-mcp@9.9.9"
-      ]
-    },
-    "neverinfamous-memory-journal-mcp": {
-      "type": "http",
-      "url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp",
-      "headers": {
-        "Authorization": "Bearer {smithery_api_key}"
-      }
-    }
-  }
+	"mcpServers": {
+		"mcp-server-filesystem": {
+			"type": "stdio",
+			"command": "npx",
+			"args": ["-y", "@agent-infra/mcp-server-filesystem"]
+		},
+		"memory-mcp": {
+			"type": "stdio",
+			"command": "npx",
+			"args": ["-y", "@letta-ai/memory-mcp@9.9.9"]
+		},
+		"neverinfamous-memory-journal-mcp": {
+			"type": "http",
+			"url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp",
+			"headers": {
+				"Authorization": "Bearer {smithery_api_key}"
+			}
+		}
+	}
 }

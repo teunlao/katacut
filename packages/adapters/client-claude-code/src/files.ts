@@ -1,9 +1,9 @@
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
-import { readTextFile } from "@katacut/utils";
+import { readTextFile } from '@katacut/utils';
 
-import type { ClaudeServerJson } from "./types.js";
+import type { ClaudeServerJson } from './types.js';
 
 export interface ReadMcpResult {
 	readonly source?: string;
@@ -11,7 +11,7 @@ export interface ReadMcpResult {
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+	return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function extractMcpServers(value: unknown): Record<string, ClaudeServerJson> | undefined {
@@ -22,27 +22,27 @@ function extractMcpServers(value: unknown): Record<string, ClaudeServerJson> | u
 		for (const [k, v] of Object.entries(obj)) {
 			if (!isObject(v)) continue;
 			const vv = v as Record<string, unknown>;
-			const type = vv.type === "http" || vv.type === "stdio" ? vv.type : undefined;
+			const type = vv.type === 'http' || vv.type === 'stdio' ? vv.type : undefined;
 			if (!type) continue;
-			if (type === "http") {
-				const url = typeof vv.url === "string" ? vv.url : undefined;
+			if (type === 'http') {
+				const url = typeof vv.url === 'string' ? vv.url : undefined;
 				if (!url) continue;
 				const headers = isObject(vv.headers)
 					? Object.fromEntries(
-							Object.entries(vv.headers).filter(([, val]) => typeof val === "string") as [string, string][],
+							Object.entries(vv.headers).filter(([, val]) => typeof val === 'string') as [string, string][],
 						)
 					: undefined;
-				out[k] = { type: "http", url, headers };
+				out[k] = { type: 'http', url, headers };
 			} else {
-				const command = typeof vv.command === "string" ? vv.command : undefined;
+				const command = typeof vv.command === 'string' ? vv.command : undefined;
 				if (!command) continue;
-				const args = Array.isArray(vv.args) ? (vv.args.filter((a) => typeof a === "string") as string[]) : undefined;
+				const args = Array.isArray(vv.args) ? (vv.args.filter((a) => typeof a === 'string') as string[]) : undefined;
 				const env = isObject(vv.env)
 					? Object.fromEntries(
-							Object.entries(vv.env).filter(([, val]) => typeof val === "string") as [string, string][],
+							Object.entries(vv.env).filter(([, val]) => typeof val === 'string') as [string, string][],
 						)
 					: undefined;
-				out[k] = { type: "stdio", command, args, env };
+				out[k] = { type: 'stdio', command, args, env };
 			}
 		}
 		return out;
@@ -64,7 +64,7 @@ async function readJson(path: string): Promise<unknown | undefined> {
 }
 
 export async function readProjectMcp(cwd = process.cwd()): Promise<ReadMcpResult> {
-	const path = join(cwd, ".mcp.json");
+	const path = join(cwd, '.mcp.json');
 	const parsed = await readJson(path);
 	const servers = extractMcpServers(parsed) ?? {};
 	return { source: servers && Object.keys(servers).length > 0 ? path : undefined, mcpServers: servers };
@@ -73,22 +73,22 @@ export async function readProjectMcp(cwd = process.cwd()): Promise<ReadMcpResult
 export async function readUserMcp(): Promise<ReadMcpResult> {
 	const home = homedir();
 	const xdg = process.env.XDG_CONFIG_HOME
-		? join(process.env.XDG_CONFIG_HOME, "claude")
-		: join(home, ".config", "claude");
+		? join(process.env.XDG_CONFIG_HOME, 'claude')
+		: join(home, '.config', 'claude');
 	const candidates: string[] = [
 		// POSIX-style locations (macOS/Linux)
-		join(home, ".claude", "settings.json"),
-		join(home, ".claude.json"),
-		join(xdg, "settings.json"),
-		join(xdg, "config.json"),
+		join(home, '.claude', 'settings.json'),
+		join(home, '.claude.json'),
+		join(xdg, 'settings.json'),
+		join(xdg, 'config.json'),
 	];
 	// Windows-style locations (additionally checked on all platforms; existence decides)
 	if (process.env.USERPROFILE) {
-		candidates.push(join(process.env.USERPROFILE, ".claude", "settings.json"));
-		candidates.push(join(process.env.USERPROFILE, ".claude.json"));
+		candidates.push(join(process.env.USERPROFILE, '.claude', 'settings.json'));
+		candidates.push(join(process.env.USERPROFILE, '.claude.json'));
 	}
 	if (process.env.APPDATA) {
-		candidates.push(join(process.env.APPDATA, "Claude", "settings.json"));
+		candidates.push(join(process.env.APPDATA, 'Claude', 'settings.json'));
 	}
 	for (const file of candidates) {
 		const parsed = await readJson(file);

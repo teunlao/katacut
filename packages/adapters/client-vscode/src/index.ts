@@ -1,5 +1,5 @@
 export interface VscodeSyncAction {
-	readonly type: "command" | "write" | "noop";
+	readonly type: 'command' | 'write' | 'noop';
 	readonly payload: unknown;
 }
 

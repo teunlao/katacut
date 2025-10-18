@@ -1,10 +1,10 @@
-import type { ErrorObject } from "ajv";
-import { Ajv } from "ajv";
-import addFormats from "ajv-formats";
-import { type ParseError, parse, printParseErrorCode } from "jsonc-parser";
+import type { ErrorObject } from 'ajv';
+import { Ajv } from 'ajv';
+import addFormats from 'ajv-formats';
+import { type ParseError, parse, printParseErrorCode } from 'jsonc-parser';
 
-import schemaJson from "./schema.json" with { type: "json" };
-import type { KatacutConfig } from "./types.js";
+import schemaJson from './schema.json' with { type: 'json' };
+import type { KatacutConfig } from './types.js';
 
 export interface ValidationIssue {
 	path: string;
@@ -27,18 +27,18 @@ const ajv = new Ajv({
 const validate = ajv.compile<KatacutConfig>(schemaJson as unknown as Record<string, unknown>);
 
 function normalizePath(path?: string) {
-	if (!path) return "";
-	return path.replace(/^\//, "").replace(/\//g, ".");
+	if (!path) return '';
+	return path.replace(/^\//, '').replace(/\//g, '.');
 }
 
 function formatIssueMessage(issue: ErrorObject) {
 	if (issue.message) return issue.message;
-	return ajv.errorsText([issue], { dataVar: "config" });
+	return ajv.errorsText([issue], { dataVar: 'config' });
 }
 
 function mapParseError(error: ParseError): ValidationIssue {
 	return {
-		path: "",
+		path: '',
 		message: `Parse error: ${printParseErrorCode(error.error)} at offset ${error.offset}`,
 	};
 }
@@ -54,12 +54,12 @@ export function parseConfig(source: string): ConfigValidationResult {
 		return { issues: parseErrors.map(mapParseError) };
 	}
 
-	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+	if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
 		return {
 			issues: [
 				{
-					path: "",
-					message: "Configuration must be a JSON object",
+					path: '',
+					message: 'Configuration must be a JSON object',
 				},
 			],
 		};
@@ -79,4 +79,4 @@ export function parseConfig(source: string): ConfigValidationResult {
 	};
 }
 
-export type { KatacutConfig, McpServerConfig } from "./types.js";
+export type { KatacutConfig, McpServerConfig } from './types.js';
