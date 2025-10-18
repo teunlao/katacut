@@ -20,6 +20,7 @@ export interface InstallOptions {
   readonly yes?: boolean;
   readonly json?: boolean;
   readonly noSummary?: boolean;
+  readonly local?: boolean;
 }
 
 export function registerInstallCommand(program: Command) {
@@ -37,6 +38,7 @@ export function registerInstallCommand(program: Command) {
     .option("-y, --yes", "confirm destructive operations like --prune", false)
     .option("--json", "machine-readable output: only JSON plan (no tables, no labels)", false)
     .option("--no-summary", "suppress human tables and labels; keep JSON only where applicable", false)
+    .option("--local", "apply locally only (do not touch config/lock); record state as local intent", false)
 		.action(async (options: InstallOptions) => {
 			const cwd = process.cwd();
 
@@ -106,12 +108,18 @@ export function registerInstallCommand(program: Command) {
       console.log(JSON.stringify(plan, null, 2));
       if (!options.json && !options.noSummary) printPlanTable(plan, scope);
 
-			// Safety: require --yes for --prune to avoid accidental removals
-			if (options.prune && !options.yes) {
-				console.error("Refusing to prune without confirmation. Re-run with --yes to proceed.");
-				process.exitCode = 1;
-				return;
-			}
+      // Safety: require --yes for --prune to avoid accidental removals
+      if (options.prune && !options.yes) {
+        console.error("Refusing to prune without confirmation. Re-run with --yes to proceed.");
+        process.exitCode = 1;
+        return;
+      }
+
+      if (options.local && options.prune) {
+        console.error("--local cannot be used together with --prune. Remove entries via 'kc mcp remove --local' or run project install without --local.");
+        process.exitCode = 1;
+        return;
+      }
 
 			if (options.dryRun) return;
 
@@ -132,24 +140,25 @@ export function registerInstallCommand(program: Command) {
 				return;
 			}
 
-			// Record local state for diagnostics
-			const mode: "native" | "emulated" = scope === requestedScope ? "native" : "emulated";
-			const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
-			await appendProjectStateRun(cwd, {
-				at: new Date().toISOString(),
-				client: adapter.id,
-				requestedScope,
-				realizedScope: scope,
-				mode,
-				result: summary,
-				entries: stateEntries,
-			});
+      // Record state for diagnostics
+      const mode: "native" | "emulated" = scope === requestedScope ? "native" : "emulated";
+      const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
+      await appendProjectStateRun(cwd, {
+        at: new Date().toISOString(),
+        client: adapter.id,
+        requestedScope,
+        realizedScope: scope,
+        mode,
+        intent: options.local ? "local" : "project",
+        result: summary,
+        entries: stateEntries,
+      });
 
-			// Write lock by default (unless suppressed) after successful apply
-			if (options.writeLock !== false) {
-				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-				console.log(`Updated lockfile: ${lockPath}`);
-			}
+      // Write lock by default (unless suppressed) after successful apply (skip when --local)
+      if (!options.local && options.writeLock !== false) {
+        await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+        console.log(`Updated lockfile: ${lockPath}`);
+      }
 		});
 }
 

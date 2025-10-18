@@ -26,6 +26,7 @@ interface DoctorReport {
     readonly realizedScope: "project" | "user";
     readonly mode: "native" | "emulated";
   };
+  readonly localOverrides?: ReadonlyArray<{ name: string; scope: "project"|"user"; action: "add"|"update"|"remove"|"skip" }>; 
   readonly status: "ok" | "warn" | "error";
 }
 
@@ -73,6 +74,13 @@ export function registerDoctorCommand(program: Command) {
       const hasWarns = (conflicts.length > 0) || !projectCheck.writable || (userCheck && userCheck.writable === false) || !last;
       const status: DoctorReport["status"] = hasErrors ? "error" : hasWarns ? "warn" : "ok";
 
+      // Local overrides classification (simple: last intent=local -> list entries)
+      const localOverrides = last && last.intent === "local"
+        ? Object.entries(last.entries)
+            .filter(([,e]) => e.outcome === "add" || e.outcome === "update" || e.outcome === "remove" || e.outcome === "skip")
+            .map(([name, e]) => ({ name, scope: e.scope as ("project"|"user"), action: e.outcome as ("add"|"update"|"remove"|"skip") }))
+        : [];
+
       const report: DoctorReport = {
         client: adapter.id,
         cli: { available: cliAvailable },
@@ -82,6 +90,7 @@ export function registerDoctorCommand(program: Command) {
         capabilities: caps,
         status,
         realized: last ? { at: last.at, requestedScope: last.requestedScope, realizedScope: last.realizedScope, mode: last.mode } : undefined,
+        localOverrides,
       };
 
       console.log(JSON.stringify(report, null, 2));

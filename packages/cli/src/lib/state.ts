@@ -16,6 +16,7 @@ export interface StateRun {
   readonly requestedScope: Scope;
   readonly realizedScope: Scope;
   readonly mode: "native" | "emulated";
+  readonly intent: "project" | "local";
   readonly result: StateRunSummary;
   readonly entries: Record<string, StateEntry>;
 }
@@ -72,4 +73,3 @@ export function buildStateEntries(
   }
   return out;
 }
-
