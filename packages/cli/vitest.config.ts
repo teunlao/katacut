@@ -8,5 +8,6 @@ export default defineConfig({
 		root: __dirname,
 		include: ["test/**/*.test.{ts,tsx}"],
 		environment: "node",
+		setupFiles: ["./vitest.setup.ts"],
 	},
 });

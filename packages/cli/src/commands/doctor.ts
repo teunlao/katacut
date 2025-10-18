@@ -1,6 +1,8 @@
 import { constants } from "node:fs";
-import { access } from "node:fs/promises";
+import { access, readFile } from "node:fs/promises";
 import { join } from "node:path";
+import type { Lockfile } from "@katacut/core";
+import { verifyLock } from "@katacut/core";
 import { deepEqualStable } from "@katacut/utils";
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
@@ -20,6 +22,17 @@ interface DoctorReport {
 	readonly project?: { readonly path: string; readonly readable?: boolean; readonly writable?: boolean };
 	readonly user?: { readonly path?: string; readonly readable?: boolean; readonly writable?: boolean };
 	readonly conflicts?: readonly string[];
+	readonly lock?: {
+		readonly path: string;
+		readonly readable: boolean;
+		readonly status: "ok" | "mismatch" | "missing";
+		readonly mismatches?: ReadonlyArray<{
+			readonly name: string;
+			readonly expectedScope?: "project" | "user";
+			readonly actual?: { readonly scope?: "project" | "user"; readonly fingerprint?: string };
+			readonly reason: "missing" | "fingerprint" | "scope" | "extra";
+		}>;
+	};
 	readonly capabilities?: {
 		readonly supportsProject: boolean;
 		readonly supportsUser: boolean;
@@ -68,7 +81,7 @@ export function registerDoctorCommand(program: Command) {
 		.action(async (options: { readonly client?: string; readonly json?: boolean; readonly noSummary?: boolean }) => {
 			const clientId = options.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
-      const cwd = process.cwd();
+			const cwd = process.cwd();
 
 			const cliAvailable = (await adapter.checkAvailable?.()) ?? true;
 			const caps = (await adapter.capabilities?.()) ?? {
@@ -92,12 +105,29 @@ export function registerDoctorCommand(program: Command) {
 				if (u && !deepEqualStable(u, json)) conflicts.push(name);
 			}
 
+			// Optional: lock verification
+			const lockPath = join(cwd, "katacut.lock.json");
+			let lockBlock: DoctorReport["lock"] = { path: lockPath, readable: false, status: "missing" };
+			try {
+				const text = await readFile(lockPath, "utf8");
+				const lock = JSON.parse(text) as Lockfile;
+				const rep = verifyLock(lock, project, user);
+				lockBlock = { path: lockPath, readable: true, status: rep.status, mismatches: rep.mismatches };
+			} catch {
+				lockBlock = { path: lockPath, readable: false, status: "missing" };
+			}
+
 			const state = await readProjectState(cwd);
 			const last = state?.runs?.[0];
 
 			const hasErrors = !cliAvailable;
 			const hasWarns =
-				conflicts.length > 0 || !projectCheck.writable || (userCheck && userCheck.writable === false) || !last;
+				conflicts.length > 0 ||
+				!projectCheck.writable ||
+				(userCheck && userCheck.writable === false) ||
+				!last ||
+				lockBlock.status === "mismatch" ||
+				lockBlock.status === "missing";
 			const status: DoctorReport["status"] = hasErrors ? "error" : hasWarns ? "warn" : "ok";
 
 			// Local overrides classification (simple: last intent=local -> list entries)
@@ -121,6 +151,7 @@ export function registerDoctorCommand(program: Command) {
 				project: { path: projectCheck.path, readable: projectCheck.readable, writable: projectCheck.writable },
 				user: userCheck ? { path: userCheck.path, readable: userCheck.readable, writable: userCheck.writable } : {},
 				conflicts,
+				lock: lockBlock,
 				capabilities: caps,
 				status,
 				realized: last
@@ -133,7 +164,6 @@ export function registerDoctorCommand(program: Command) {
 			console.log(JSON.stringify(report, null, 2));
 			if (!fmt.json && !fmt.noSummary) {
 				// Human-friendly summary
-				console.log("Doctor Summary:");
 				const headers: readonly string[] = ["Item", "Value"];
 				const rows: readonly (readonly string[])[] = [
 					["Client", report.client],
@@ -143,6 +173,8 @@ export function registerDoctorCommand(program: Command) {
 					["User Path", String(report.user?.path ?? "")],
 					["User R/W", `${report.user?.readable ? "R" : "-"}${report.user?.writable ? "W" : "-"}`],
 					["Conflicts", report.conflicts && report.conflicts.length > 0 ? report.conflicts.join(", ") : "none"],
+					["Lock Path", report.lock?.path ?? ""],
+					["Lock Status", report.lock?.status ?? "missing"],
 					["Status", report.status],
 				];
 				printTableSection("Doctor Summary", headers, rows, fmt);
@@ -152,6 +184,9 @@ export function registerDoctorCommand(program: Command) {
 				if (userCheck && userCheck.writable === false) recs.push("Fix user settings permissions.");
 				if (conflicts.length > 0) recs.push("Resolve project/user conflicts or run install with desired scope.");
 				if (!last) recs.push("Run 'kc install' to record local state for diagnostics.");
+				if (report.lock?.status === "missing") recs.push("Generate lockfile: 'kc lock generate' or run 'kc install'.");
+				if (report.lock?.status === "mismatch")
+					recs.push("Run 'kc lock verify' to inspect mismatches; then 'kc install' or update lock.");
 				if (recs.length > 0) {
 					console.log("Recommendations:");
 					for (const r of recs) console.log(`- ${r}`);
