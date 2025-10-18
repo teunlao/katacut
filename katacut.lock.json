@@ -2,9 +2,9 @@
   "version": "1",
   "client": "claude-code",
   "mcpServers": {
-    "x": {
+    "mcp-server-filesystem": {
       "scope": "project",
-      "fingerprint": "cf4cf6ca647503c8882b2f105a795e529cc8001d10d8644a88dd54a931c7c0c2"
+      "fingerprint": "3dc3d1aa36165196ddc93fc8fa6a23eeb0f539f03ef323c4eb9668d20ee0848b"
     }
   }
 }

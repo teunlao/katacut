@@ -1,41 +1,13 @@
 {
   "version": "0.1.0",
   "mcp": {
-    "github": {
-      "transport": "http",
-      "url": "https://api.githubcopilot.com/mcp",
-      "headers": {}
-    },
-    "fs": {
+    "mcp-server-filesystem": {
       "transport": "stdio",
       "command": "npx",
-      "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
-      "env": {}
-    },
-    // Git operations MCP (stdio). Source: @cyanheads/git-mcp-server
-    "git-mcp": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@cyanheads/git-mcp-server"],
-      "env": {
-        "MCP_LOG_LEVEL": "info"
-      }
-    },
-    // Generic OpenAPI MCP over stdio. Demo points to Petstore OpenAPI (public)
-    "openapi-petstore": {
-      "transport": "stdio",
-      "command": "npx",
-      "args": ["-y", "@ivotoby/openapi-mcp-server"],
-      "env": {
-        "OPENAPI_SPEC_URL": "https://petstore3.swagger.io/api/v3/openapi.json"
-      }
-    },
-    // Expose Claude Code itself as an MCP server (stdio)
-    "claude-code-self": {
-      "transport": "stdio",
-      "command": "claude",
-      "args": ["mcp", "serve", "--transport", "stdio"],
-      "env": {}
+      "args": [
+        "-y",
+        "@agent-infra/mcp-server-filesystem"
+      ]
     }
   }
 }

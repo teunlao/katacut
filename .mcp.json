@@ -1,52 +1,12 @@
 {
   "mcpServers": {
-    "github": {
-      "type": "http",
-      "url": "https://api.githubcopilot.com/mcp",
-      "headers": {}
-    },
-    "fs": {
+    "mcp-server-filesystem": {
       "type": "stdio",
       "command": "npx",
       "args": [
         "-y",
-        "@modelcontextprotocol/server-filesystem",
-        "."
-      ],
-      "env": {}
-    },
-    "git-mcp": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@cyanheads/git-mcp-server"
-      ],
-      "env": {
-        "MCP_LOG_LEVEL": "info"
-      }
-    },
-    "openapi-petstore": {
-      "type": "stdio",
-      "command": "npx",
-      "args": [
-        "-y",
-        "@ivotoby/openapi-mcp-server"
-      ],
-      "env": {
-        "OPENAPI_SPEC_URL": "https://petstore3.swagger.io/api/v3/openapi.json"
-      }
-    },
-    "claude-code-self": {
-      "type": "stdio",
-      "command": "claude",
-      "args": [
-        "mcp",
-        "serve",
-        "--transport",
-        "stdio"
-      ],
-      "env": {}
+        "@agent-infra/mcp-server-filesystem"
+      ]
     }
   }
 }
