@@ -10,6 +10,9 @@ import { resolveFormatFlags } from "../../lib/format.js";
 import { isServerJson } from "../../lib/guards.js";
 import { buildSummaryLine, printTableSection } from "../../lib/print.js";
 import { appendProjectStateRun, buildStateEntries } from "../../lib/state.js";
+import { isRegistryVersionUrl, resolveFromRegistry } from "../../lib/resolvers/registry.js";
+import { isSmitheryServerUrl } from "../../lib/resolvers/smithery.js";
+import { resolveJsonDescriptor } from "../../lib/resolvers/json-url.js";
 
 function isHttpUrl(ref: string): URL | undefined {
 	try {
@@ -20,36 +23,7 @@ function isHttpUrl(ref: string): URL | undefined {
 	}
 }
 
-async function fetchServerJson(u: URL, timeoutMs = 10000, maxSize = 262144) {
-	const ctrl = new AbortController();
-	const to = setTimeout(() => ctrl.abort(), timeoutMs);
-	try {
-		const res = await fetch(u, { signal: ctrl.signal, redirect: "follow" });
-		const ct = res.headers.get("content-type") ?? "";
-		if (!ct.includes("json")) {
-			// allow anyway but warn via throw; we want strictness
-			throw new Error(`Unexpected content-type: ${ct}`);
-		}
-		const text = await res.text();
-		if (text.length > maxSize) throw new Error("Descriptor too large");
-		let parsed: unknown;
-		try {
-			parsed = JSON.parse(text);
-		} catch {
-			throw new Error("Invalid JSON");
-		}
-		if (!isServerJson(parsed)) throw new Error("Descriptor is not a valid ServerJson (http|stdio)");
-		return parsed;
-	} finally {
-		clearTimeout(to);
-	}
-}
-
-function deriveNameFromUrl(u: URL): string {
-	const path = u.pathname.replace(/\/+$/, "");
-	const last = path.split("/").filter(Boolean).pop() ?? "server";
-	return last.replace(/\.jsonc?$/i, "");
-}
+// fetch JSON descriptor moved to lib/resolvers/json-url
 
 function toConfigFromServerJson(
 	s:
@@ -60,97 +34,7 @@ function toConfigFromServerJson(
 	return { transport: "stdio", command: s.command, args: s.args, env: s.env };
 }
 
-// ---- Smithery server URL support ----
-function isSmitheryServerUrl(u: URL): boolean {
-  return u.hostname === "server.smithery.ai" && /\/mcp\/?$/.test(u.pathname);
-}
-
-function nameFromSmitheryUrl(u: URL): string {
-  const parts = u.pathname.split("/").filter(Boolean);
-  const idx = parts.lastIndexOf("mcp");
-  const base = idx > 0 ? parts[idx - 1] : parts.pop() ?? "server";
-  return base.replace(/^@/, "");
-}
-
-// ---- Registry URL support (v0 / v0.1) ----
-function isRegistryVersionUrl(u: URL): boolean {
-	if (u.hostname !== "registry.modelcontextprotocol.io") return false;
-	return /^\/v0(\.1)?\/servers\/.+\/versions\/(latest|[A-Za-z0-9_.-]+)$/.test(u.pathname);
-}
-
-type RegistryRemote = {
-	readonly type?: string;
-	readonly url?: string;
-	readonly headers?: ReadonlyArray<{ readonly name?: string; readonly value?: string }>;
-};
-type RegistryPackage = {
-	readonly registryType?: string;
-	readonly identifier?: string;
-	readonly transport?: { readonly type?: string };
-	readonly runtimeHint?: string;
-};
-type RegistryServer = {
-	readonly name?: string;
-	readonly remotes?: ReadonlyArray<RegistryRemote> | null;
-	readonly packages?: ReadonlyArray<RegistryPackage> | null;
-};
-type RegistryResponse = { readonly server?: RegistryServer };
-
-function pickHttpFromRemotes(remotes: ReadonlyArray<RegistryRemote>) {
-	for (const r of remotes) {
-		const t = r?.type?.toLowerCase();
-		if (!t) continue;
-		if (t === "http" || t === "streamable-http" || t === "sse") {
-			const url = r.url;
-			if (typeof url !== "string" || url.length === 0) continue;
-			const headers = Array.isArray(r.headers)
-				? Object.fromEntries(
-						(r.headers as ReadonlyArray<{ readonly name?: string; readonly value?: string }>)
-							.filter((h) => typeof h?.name === "string" && typeof h?.value === "string")
-							.map((h) => [String(h.name), String(h.value)]) as ReadonlyArray<[string, string]>,
-				  )
-				: undefined;
-			return { type: "http" as const, url, headers };
-		}
-	}
-	return undefined;
-}
-
-function pickStdioFromPackages(packages: ReadonlyArray<RegistryPackage>) {
-	for (const p of packages) {
-		const isNpm = (p.registryType ?? "").toLowerCase() === "npm";
-		const transType = p.transport?.type?.toLowerCase();
-		if (isNpm && transType === "stdio" && typeof p.identifier === "string" && p.identifier.length > 0) {
-			const useNpx = (p.runtimeHint ?? "npx").toLowerCase() === "npx" || !p.runtimeHint;
-			const command = useNpx ? "npx" : p.runtimeHint ?? "npx";
-			const args = useNpx ? ["-y", p.identifier] : [p.identifier];
-			return { type: "stdio" as const, command, args };
-		}
-	}
-	return undefined;
-}
-
-async function fetchServerJsonFromRegistry(u: URL) {
-	const res = await fetch(u, { redirect: "follow" });
-	if (!res.ok) throw new Error(`Registry request failed: ${res.status}`);
-	const data = (await res.json()) as unknown;
-	if (!data || typeof data !== "object" || !("server" in (data as Record<string, unknown>))) {
-		throw new Error("Invalid registry response");
-	}
-	const rr = data as RegistryResponse;
-	const srv = rr.server;
-	if (!srv || typeof srv.name !== "string") throw new Error("Registry server entry missing 'name'");
-	const http = Array.isArray(srv.remotes) ? pickHttpFromRemotes(srv.remotes) : undefined;
-	if (http) return { name: srv.name, server: http };
-	const stdio = Array.isArray(srv.packages) ? pickStdioFromPackages(srv.packages) : undefined;
-	if (stdio) return { name: srv.name, server: stdio };
-	throw new Error("No usable transport (http/stdio) found in registry entry");
-}
-
-function nameFromRegistryFull(full: string): string {
-	const i = full.indexOf("/");
-	return i >= 0 ? full.slice(i + 1) : full;
-}
+// registry/smithery logic moved to lib/resolvers
 
 export function registerMcpAdd(parent: Command) {
 	parent
@@ -191,8 +75,9 @@ export function registerMcpAdd(parent: Command) {
 
       // 1) Smithery URL (streamable HTTP endpoint)
       if (asUrl && isSmitheryServerUrl(asUrl)) {
-        name = nameFromSmitheryUrl(asUrl);
-        const cfgEntry: McpServerConfig = { transport: "http", url: asUrl.toString() };
+        const rsSmith = (await (async () => ({ name: asUrl.pathname.split('/').filter(Boolean).slice(-2, -1)[0]?.replace(/^@/, '') ?? 'server', config: { transport: 'http' as const, url: asUrl.toString() } }))());
+        name = rsSmith.name;
+        const cfgEntry: McpServerConfig = rsSmith.config;
 
         const config = await loadAndValidateConfig(undefined);
         const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
@@ -220,10 +105,10 @@ export function registerMcpAdd(parent: Command) {
         await appendProjectStateRun(cwd, { at: new Date().toISOString(), client: adapter.id, requestedScope: scope, realizedScope: scope, mode: "native", intent: "project", result: summary, entries: stateEntries });
         return;
       }
-				if (asUrl && isRegistryVersionUrl(asUrl)) {
-					const { name: regName, server } = await fetchServerJsonFromRegistry(asUrl);
-					name = nameFromRegistryFull(regName);
-					const cfgEntry = toConfigFromServerJson(server);
+      if (asUrl && isRegistryVersionUrl(asUrl)) {
+        const rs = await resolveFromRegistry(asUrl);
+        name = rs.name;
+        const cfgEntry = rs.config;
 
 					const config = await loadAndValidateConfig(undefined);
 					const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
@@ -254,10 +139,10 @@ export function registerMcpAdd(parent: Command) {
 					return;
 				}
 
-				if (asUrl) {
-					const sj = await fetchServerJson(asUrl);
-        name = deriveNameFromUrl(asUrl);
-					const cfgEntry = toConfigFromServerJson(sj);
+      if (asUrl) {
+        const rsJson = await resolveJsonDescriptor(asUrl);
+        name = rsJson.name;
+        const cfgEntry = rsJson.config;
 
 					// Load and edit config
 					const config = await loadAndValidateConfig(undefined);

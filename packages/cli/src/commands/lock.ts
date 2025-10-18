@@ -22,7 +22,7 @@ export function registerLockCommand(program: Command) {
 			const scope: Scope = opts.scope === "user" ? "user" : "project";
 			const lock = buildLock(adapter.id, desired, scope);
 			if (opts.out) {
-				const path = resolve(process.cwd(), opts.out);
+    				const path = resolve(process.cwd(), opts.out);
 				await (await import("node:fs/promises")).writeFile(path, JSON.stringify(lock, null, 2), "utf8");
 				console.log(`Wrote lockfile: ${path}`);
 			} else {
@@ -38,10 +38,11 @@ export function registerLockCommand(program: Command) {
 		.action(async (opts: { file?: string; client?: string }) => {
 			const clientId = opts.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
-			const path = resolve(process.cwd(), opts.file ?? "katacut.lock.json");
+    				const cwd = process.cwd();
+			const path = resolve(cwd, opts.file ?? "katacut.lock.json");
 			const text = await (await import("node:fs/promises")).readFile(path, "utf8");
 			const lock = JSON.parse(text) as Lockfile;
-			const project = await adapter.readProject(process.cwd());
+			const project = await adapter.readProject(cwd);
 			const user = await adapter.readUser();
 			const report = verifyLock(lock, project, user);
 			console.log(JSON.stringify(report, null, 2));

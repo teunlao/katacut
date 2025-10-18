@@ -34,7 +34,7 @@ export function registerMcpRemove(parent: Command) {
 		.option("-y, --yes", "Confirm removal when --local is used", false)
 		.option("-c, --config <path>", "Config path (when editing config)")
 		.action(async (names: string[], opts: RemoveOptions) => {
-			const cwd = process.cwd();
+      const cwd = process.cwd();
 			const clientId = opts.client;
 			const adapter = await getAdapter(clientId);
 			const scopeOpt = opts.scope ?? "project";

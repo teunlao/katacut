@@ -13,10 +13,11 @@ export function registerCiCommand(program: Command) {
 		.action(async (opts: { client?: string; file?: string }) => {
 			const clientId = opts.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
-			const path = resolve(process.cwd(), opts.file ?? "katacut.lock.json");
+				const cwd = process.cwd();
+			const path = resolve(cwd, opts.file ?? "katacut.lock.json");
 			const text = await readFile(path, "utf8");
 			const lock = JSON.parse(text) as Lockfile;
-			const project = await adapter.readProject(process.cwd());
+			const project = await adapter.readProject(cwd);
 			const user = await adapter.readUser();
 			const report = verifyLock(lock, project, user);
 			console.log(JSON.stringify(report, null, 2));

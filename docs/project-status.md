@@ -61,6 +61,24 @@ KataCut — «единая точка правды» для инструмент
   - Обязательные аргументы пакета (например, `allowed-directories`) пока не запрашиваются интерактивно — доработаем отдельно.
   - Секретные заголовки из remotes (например, `Authorization`) нужно задавать явно.
 
+## Новое (поддержка прямых Smithery URL)
+Поддерживаем добавление MCP по прямым ссылкам Smithery (управляемые удалённые серверы):
+- Формат: `https://server.smithery.ai/@org/name/mcp`
+- Команда: `kc mcp add "https://server.smithery.ai/@org/name/mcp" [--scope user|project]`
+- Нормализация: трактуется как HTTP‑транспорт `{ type: "http", url }`.
+- Если нужен `Authorization: Bearer <key>` — добавляется на стороне клиента (пока вручную).
+
+## Архитектура CLI (резолверы ссылок)
+Обработку ссылок выделили в отдельные резолверы (SOLID/DRY):
+- `lib/resolvers/registry.ts` — карточки версий MCP Registry (`/v0`, `/v0.1` → ServerJson).
+- `lib/resolvers/smithery.ts` — прямые URL `server.smithery.ai/.../mcp`.
+- `lib/resolvers/json-url.ts` — произвольные JSON‑дескрипторы `{type: http|stdio, ...}`.
+Команда `mcp add` детектирует источник и дальше использует общий конвейер: запись в конфиг → план → apply → lock/state.
+
+## Тесты и безопасность (lock/config)
+- Интеграционные тесты создают отдельные временные каталоги и мокают `cwd`, поэтому реальный `katacut.lock.json` проекта не затрагивается.
+- Для ручных проверок используйте `--dry-run` или временные директории (текущая реализация не требует переменных окружения).
+
 ## Что узнали про MCP Registry
 - Хост: `registry.modelcontextprotocol.io`; поддерживаются `/v0` и `/v0.1`.
 - Поиск/получение: список `GET /v0.1/servers?search=…&version=latest`; карточка версии `GET /v0.1/servers/{name}/versions/{version|latest}`.

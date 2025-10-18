@@ -68,7 +68,7 @@ export function registerDoctorCommand(program: Command) {
 		.action(async (options: { readonly client?: string; readonly json?: boolean; readonly noSummary?: boolean }) => {
 			const clientId = options.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
-			const cwd = process.cwd();
+      const cwd = process.cwd();
 
 			const cliAvailable = (await adapter.checkAvailable?.()) ?? true;
 			const caps = (await adapter.capabilities?.()) ?? {
