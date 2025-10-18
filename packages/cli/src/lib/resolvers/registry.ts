@@ -1,6 +1,6 @@
 import type { McpServerConfig } from "@katacut/schema";
 import { REGISTRY_DEFAULT_BASE, REGISTRY_HOST } from "../constants.js";
-import { pickMaxSatisfying } from "../semver.js";
+import { maxSatisfying, valid, validRange } from "semver";
 import type { ResolvedServer } from "./types.js";
 
 type RegistryRemote = {
@@ -141,7 +141,7 @@ export async function resolveConcreteVersion(
   const s = versionSpec.trim();
   if (s.length === 0 || s === "latest" || /[a-zA-Z]/.test(s)) return s.length === 0 ? "latest" : s; // tags & latest
   // Exact semver provided -> use as-is (no search roundtrip)
-  if (/^\d+\.\d+\.\d+(?:-.+)?$/.test(s)) return s;
+  if (valid(s)) return s;
   const origin = base ?? REGISTRY_DEFAULT_BASE;
   const url = new URL(`/v0.1/servers?search=${encodeURIComponent(canonicalName)}`, origin);
   const res = await fetch(url, { headers: { Accept: "application/json, application/problem+json" }, redirect: "follow" });
@@ -154,7 +154,9 @@ export async function resolveConcreteVersion(
     .filter((s) => s.name === canonicalName)
     .map((s) => s.version ?? "")
     .filter((v) => typeof v === "string" && v.length > 0);
-  const match = pickMaxSatisfying(versions, s);
+  const range = validRange(s);
+  if (!range) throw new Error(`Invalid version/range '${s}'`);
+  const match = maxSatisfying(versions, range);
   if (!match) throw new Error(`No versions satisfy '${s}' for '${canonicalName}'`);
   return match;
 }

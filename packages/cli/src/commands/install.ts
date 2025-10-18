@@ -46,12 +46,44 @@ export function registerInstallCommand(program: Command) {
 
 			const clientId = options.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
+			const config = await loadAndValidateConfig(options.config);
+			const requestedScope: Scope = options.scope === "user" ? "user" : "project";
+
+			// Lockfile-only: generate lock strictly from requested scope without adapter capability checks
+			if (options.lockfileOnly) {
+				const desiredForLock = adapter.desiredFromConfig(config);
+				const expectedLock: Lockfile = buildLock(adapter.id, desiredForLock, requestedScope);
+				const lockPath = resolve(process.cwd(), "katacut.lock.json");
+				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+				console.log(`Wrote lockfile: ${lockPath}`);
+				return;
+			}
+
+
+			// Early frozen-lock handling (before any adapter availability checks or apply)
+			if (options.frozenLock) {
+				const desiredForLock = adapter.desiredFromConfig(config);
+				const expectedLockEarly: Lockfile = buildLock(adapter.id, desiredForLock, requestedScope);
+				const lockPathEarly = resolve(cwd, "katacut.lock.json");
+				try {
+					const text = await readFile(lockPathEarly, "utf8");
+					const currentLock = JSON.parse(text) as Lockfile;
+					const sameClient = currentLock.client === expectedLockEarly.client;
+					const sameEntries = JSON.stringify(currentLock.mcpServers) === JSON.stringify(expectedLockEarly.mcpServers);
+					if (!sameClient || !sameEntries) {
+						console.error("Frozen lock mismatch: lockfile does not match desired configuration.");
+						process.exitCode = 1;
+					}
+				} catch {
+					console.error("Frozen lock mismatch: lockfile is missing or unreadable.");
+					process.exitCode = 1;
+				}
+				return;
+			}
+
 			if (!(await adapter.checkAvailable?.())) {
 				throw new Error("Claude CLI is not available in PATH. Please install and try again.");
 			}
-
-			const config = await loadAndValidateConfig(options.config);
-			const requestedScope: Scope = options.scope === "user" ? "user" : "project";
 
 			const desired = adapter.desiredFromConfig(config);
 
@@ -76,31 +108,9 @@ export function registerInstallCommand(program: Command) {
 			const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
 			const lockPath = resolve(cwd, "katacut.lock.json");
 
-			// Frozen lock: require existing lock to match desired, otherwise exit with code 1
-			if (options.frozenLock) {
-				try {
-					const text = await readFile(lockPath, "utf8");
-					const currentLock = JSON.parse(text) as Lockfile;
-					const sameClient = currentLock.client === expectedLock.client;
-					const sameEntries = JSON.stringify(currentLock.mcpServers) === JSON.stringify(expectedLock.mcpServers);
-					if (!sameClient || !sameEntries) {
-						console.error("Frozen lock mismatch: lockfile does not match desired configuration.");
-						process.exitCode = 1;
-						return;
-					}
-				} catch {
-					console.error("Frozen lock mismatch: lockfile is missing or unreadable.");
-					process.exitCode = 1;
-					return;
-				}
-			}
 
-			// Lockfile-only: write lock and exit without applying
-			if (options.lockfileOnly) {
-				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-				console.log(`Wrote lockfile: ${lockPath}`);
-				return;
-			}
+
+
 
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);

@@ -21,10 +21,14 @@
 		"dev": "tsc --build tsconfig.build.json --watch"
 	},
 	"dependencies": {
+		"@katacut/adapter-client-claude-code": "workspace:*",
 		"@katacut/core": "workspace:*",
 		"@katacut/schema": "workspace:*",
-		"@katacut/adapter-client-claude-code": "workspace:*",
 		"@katacut/utils": "workspace:*",
-		"commander": "^12.1.0"
+		"commander": "^14.0.1",
+		"semver": "^7.7.3"
+	},
+	"devDependencies": {
+		"@types/semver": "^7.5.8"
 	}
 }
