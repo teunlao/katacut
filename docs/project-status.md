@@ -34,15 +34,24 @@ KataCut — «единая точка правды» для инструмент
 ## Новое (диагностика и lockfile/CI)
 - Диагностика окружения:
   - `kc doctor --client claude-code` — JSON‑отчёт о доступности CLI, правах на project/user файлы, конфликтах и общем статусе (`ok|warn|error`).
+  - Показывает `capabilities` клиента (какие scope поддерживаются) и краткую табличную сводку «Doctor Summary» с рекомендациями.
+  - Учитывает локальный state (см. ниже): при его отсутствии выдаёт предупреждение (warn) с подсказкой прогнать `install`.
 - Lockfile и проверка в CI:
   - Lockfile проекта: `katacut.lock.json` фиксирует желаемое состояние по конфигу (для выбранного scope).
   - `kc lock generate` — сформировать lockfile из конфига (без применения).
   - `kc lock verify` — сверить lockfile с фактическим состоянием; ненулевой код при расхождении (под CI).
+  - `kc ci` — обёртка над `lock verify` с JSON‑отчётом и ненулевым кодом при mismatch (удобно для пайплайнов).
 - Поведение `kc install` (аналог npm/pnpm):
   - По умолчанию после успешного применения обновляет `katacut.lock.json`.
   - `--no-write-lock` — не трогать lock при применении.
   - `--frozen-lock` — «замороженный» режим: требует существующий lock и точное соответствие конфигу; при расхождении — ошибка, без изменений.
   - `--lockfile-only` — обновить/создать lockfile и выйти, не применяя изменения.
+  - По умолчанию scope=`project`. Для `--prune` требуется подтверждение `-y/--yes`.
+
+## Локальный state (факт применения)
+- Путь: `./.katacut/state.json` (локально, не коммитится — добавлен в `.gitignore`).
+- Содержит сведения о последнем успешном `install`: `requestedScope`, `realizedScope`, `mode (native|emulated)`, сводку результатов и fingerprints по каждой записи.
+- Используется `kc doctor` для сопоставления Desired (lock) ↔ Current (файлы) ↔ Realized (state) и формирования рекомендаций.
 
 ## Ограничения сейчас
 - Поддерживается один клиент — `claude-code`.
@@ -52,6 +61,17 @@ KataCut — «единая точка правды» для инструмент
 - Capabilities/эмуляция scope: маркировка `native|emulated`, политика fallback при отсутствии `project` у клиента.
 - Глобальные операции (по аналогии с `-g`): явные команды/флаг, учёт в пользовательском состоянии, интеграция с `doctor`.
 - Документация и примеры конфигов для типовых сценариев.
+- Research: enterprise overrides и кроссплатформенный резолвер путей (см. `.tasks/2025-10-18-enterprise-overrides-research.md`).
+
+## Кроссплатформенные пути (актуализировано)
+- Project: `./.mcp.json`.
+- User (порядок поиска):
+  - POSIX: `~/.claude/settings.json`, `~/.claude.json`, `$XDG_CONFIG_HOME/claude/settings.json`, затем `$XDG_CONFIG_HOME/claude/config.json`.
+  - Windows (fallback): `%USERPROFILE%/.claude/settings.json`, `%USERPROFILE%/.claude.json`, при наличии — `%APPDATA%/Claude/settings.json`.
+- Enterprise (перекрытие, планируется детекция в `doctor`):
+  - macOS: `/Library/Application Support/ClaudeCode/managed-settings.json`, `/Library/Application Support/ClaudeCode/managed-mcp.json`.
+  - Linux/WSL: `/etc/claude-code/managed-settings.json`, `/etc/claude-code/managed-mcp.json`.
+  - Windows: `C:\\ProgramData\\ClaudeCode\\managed-settings.json`, `C:\\ProgramData\\ClaudeCode\\managed-mcp.json`.
 
 ## Критерии успеха
 - Онбординг в новый проект занимает минуты, а не часы/дни.

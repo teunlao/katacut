@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
+import { readProjectState } from "../lib/state.js";
 
 interface PathCheck { readonly path: string; readonly readable?: boolean; readonly writable?: boolean }
 
@@ -18,6 +19,12 @@ interface DoctorReport {
     readonly supportsUser: boolean;
     readonly emulateProjectWithUser: boolean;
     readonly supportsGlobalExplicit: boolean;
+  };
+  readonly realized?: {
+    readonly at: string;
+    readonly requestedScope: "project" | "user";
+    readonly realizedScope: "project" | "user";
+    readonly mode: "native" | "emulated";
   };
   readonly status: "ok" | "warn" | "error";
 }
@@ -57,8 +64,11 @@ export function registerDoctorCommand(program: Command) {
         if (u && JSON.stringify(u) !== JSON.stringify(json)) conflicts.push(name);
       }
 
+      const state = await readProjectState(cwd);
+      const last = state?.runs?.[0];
+
       const hasErrors = !cliAvailable;
-      const hasWarns = (conflicts.length > 0) || !projectCheck.writable || (userCheck && userCheck.writable === false);
+      const hasWarns = (conflicts.length > 0) || !projectCheck.writable || (userCheck && userCheck.writable === false) || !last;
       const status: DoctorReport["status"] = hasErrors ? "error" : hasWarns ? "warn" : "ok";
 
       const report: DoctorReport = {
@@ -69,6 +79,7 @@ export function registerDoctorCommand(program: Command) {
         conflicts,
         capabilities: caps,
         status,
+        realized: last ? { at: last.at, requestedScope: last.requestedScope, realizedScope: last.realizedScope, mode: last.mode } : undefined,
       };
 
       console.log(JSON.stringify(report, null, 2));
@@ -97,6 +108,7 @@ export function registerDoctorCommand(program: Command) {
       if (!projectCheck.writable) recs.push("Make project .mcp.json writable or run with appropriate permissions.");
       if (userCheck && userCheck.writable === false) recs.push("Fix user settings permissions.");
       if (conflicts.length > 0) recs.push("Resolve project/user conflicts or run install with desired scope.");
+      if (!last) recs.push("Run 'kc install' to record local state for diagnostics.");
       if (recs.length > 0) {
         console.log("Recommendations:");
         for (const r of recs) console.log(`- ${r}`);

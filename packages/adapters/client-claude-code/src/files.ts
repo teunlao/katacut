@@ -63,12 +63,21 @@ export async function readProjectMcp(cwd = process.cwd()): Promise<ReadMcpResult
 export async function readUserMcp(): Promise<ReadMcpResult> {
   const home = homedir();
   const xdg = process.env.XDG_CONFIG_HOME ? join(process.env.XDG_CONFIG_HOME, "claude") : join(home, ".config", "claude");
-  const candidates = [
+  const candidates: string[] = [
+    // POSIX-style locations (macOS/Linux)
     join(home, ".claude", "settings.json"),
     join(home, ".claude.json"),
     join(xdg, "settings.json"),
     join(xdg, "config.json"),
   ];
+  // Windows-style locations (additionally checked on all platforms; existence decides)
+  if (process.env.USERPROFILE) {
+    candidates.push(join(process.env.USERPROFILE, ".claude", "settings.json"));
+    candidates.push(join(process.env.USERPROFILE, ".claude.json"));
+  }
+  if (process.env.APPDATA) {
+    candidates.push(join(process.env.APPDATA, "Claude", "settings.json"));
+  }
   for (const file of candidates) {
     const parsed = await readJson(file);
     const servers = extractMcpServers(parsed);
@@ -76,4 +85,3 @@ export async function readUserMcp(): Promise<ReadMcpResult> {
   }
   return { mcpServers: {} };
 }
-

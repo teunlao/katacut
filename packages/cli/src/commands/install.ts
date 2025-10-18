@@ -5,6 +5,7 @@ import { buildLock, diffDesiredCurrent, type Lockfile } from "@katacut/core";
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../lib/config.js";
+import { appendProjectStateRun, buildStateEntries } from "../lib/state.js";
 
 export interface InstallOptions {
 	readonly config?: string;
@@ -14,9 +15,9 @@ export interface InstallOptions {
 	readonly dryRun?: boolean;
 	readonly prune?: boolean;
 	readonly writeLock?: boolean;
-  readonly frozenLock?: boolean;
-  readonly lockfileOnly?: boolean;
-  readonly yes?: boolean;
+	readonly frozenLock?: boolean;
+	readonly lockfileOnly?: boolean;
+	readonly yes?: boolean;
 }
 
 export function registerInstallCommand(program: Command) {
@@ -57,9 +58,7 @@ export function registerInstallCommand(program: Command) {
 			if (requestedScope === "project" && !caps.supportsProject) {
 				if (caps.emulateProjectWithUser && caps.supportsUser) {
 					scope = "user";
-					console.log(
-						"Note: adapter does not support project scope; applying in user scope (emulated project).",
-					);
+					console.log("Note: adapter does not support project scope; applying in user scope (emulated project).");
 				} else {
 					throw new Error("Adapter does not support project scope and emulation is not allowed.");
 				}
@@ -127,6 +126,19 @@ export function registerInstallCommand(program: Command) {
 				return;
 			}
 
+			// Record local state for diagnostics
+			const mode: "native" | "emulated" = scope === requestedScope ? "native" : "emulated";
+			const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
+			await appendProjectStateRun(cwd, {
+				at: new Date().toISOString(),
+				client: adapter.id,
+				requestedScope,
+				realizedScope: scope,
+				mode,
+				result: summary,
+				entries: stateEntries,
+			});
+
 			// Write lock by default (unless suppressed) after successful apply
 			if (options.writeLock !== false) {
 				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
@@ -137,24 +149,27 @@ export function registerInstallCommand(program: Command) {
 
 type PlanItem = { readonly action: string; readonly name: string };
 function printPlanTable(plan: readonly PlanItem[], scope: Scope) {
-  const headers = ["Name", "Action", "Scope"] as const;
-  const rows = plan.map((p) => [p.name, p.action.toUpperCase(), scope]);
-  renderTable(headers as unknown as string[], rows.map((r) => r.map(String)));
+	const headers = ["Name", "Action", "Scope"] as const;
+	const rows = plan.map((p) => [p.name, p.action.toUpperCase(), scope]);
+	renderTable(
+		headers as unknown as string[],
+		rows.map((r) => r.map(String)),
+	);
 }
 
-function printSummaryTable(summary: { added: number; updated: number; removed: number; failed: number }, skipped: number) {
-  const headers = ["Added", "Updated", "Removed", "Skipped", "Failed"] as const;
-  const rows = [[summary.added, summary.updated, summary.removed, skipped, summary.failed].map(String)];
-  renderTable(headers as unknown as string[], rows);
+function printSummaryTable(
+	summary: { added: number; updated: number; removed: number; failed: number },
+	skipped: number,
+) {
+	const headers = ["Added", "Updated", "Removed", "Skipped", "Failed"] as const;
+	const rows = [[summary.added, summary.updated, summary.removed, skipped, summary.failed].map(String)];
+	renderTable(headers as unknown as string[], rows);
 }
 
 function renderTable(headers: string[], rows: string[][]) {
-  const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)));
-  const line = (cols: string[]) =>
-    cols
-      .map((c, i) => c.padEnd(widths[i], " "))
-      .join("  |  ");
-  console.log(line(headers));
-  console.log(widths.map((w) => "".padEnd(w, "-")).join("--+--"));
-  for (const r of rows) console.log(line(r));
+	const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)));
+	const line = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i], " ")).join("  |  ");
+	console.log(line(headers));
+	console.log(widths.map((w) => "".padEnd(w, "-")).join("--+--"));
+	for (const r of rows) console.log(line(r));
 }
