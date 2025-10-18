@@ -11,6 +11,7 @@ import { buildSummaryLine, printTableSection } from "../../lib/print.js";
 import { resolveJsonDescriptor } from "../../lib/resolvers/json-url.js";
 import { buildRegistryVersionUrl, isRegistryVersionUrl, resolveCanonicalNameByShort, resolveFromRegistry } from "../../lib/resolvers/registry.js";
 import { REGISTRY_DEFAULT_BASE } from "../../lib/constants.js";
+import { normalizeRegistryVersion } from "../../lib/version.js";
 import { isSmitheryServerUrl } from "../../lib/resolvers/smithery.js";
 import { appendProjectStateRun, buildStateEntries } from "../../lib/state.js";
 
@@ -279,7 +280,7 @@ export function registerMcpAdd(parent: Command) {
 				// Name path (registry): support full (ns/name@ver) and short (name@ver via search)
 				const at = (() => { const i = ref.lastIndexOf("@"); return i > 0 ? i : -1; })();
 				const rawName = at > 0 ? ref.slice(0, at) : ref;
-				const regVersion = at > 0 ? ref.slice(at + 1) : (opts.version ?? "latest");
+                const regVersion = normalizeRegistryVersion(at > 0 ? ref.slice(at + 1) : opts.version);
 				const base = opts.registry ?? REGISTRY_DEFAULT_BASE;
 				try {
 					const regName = rawName.includes("/") ? rawName : await resolveCanonicalNameByShort(rawName, base);
