@@ -1,5 +1,6 @@
 import type { McpServerConfig } from "@katacut/schema";
 import { REGISTRY_DEFAULT_BASE, REGISTRY_HOST } from "../constants.js";
+import { pickMaxSatisfying } from "../semver.js";
 import type { ResolvedServer } from "./types.js";
 
 type RegistryRemote = {
@@ -130,4 +131,30 @@ export async function resolveCanonicalNameByShort(
   throw new Error(
     `Ambiguous short name '${shortName}'; candidates: ${matches.join(", ")}. Please specify full 'namespace/name'.`,
   );
+}
+
+export async function resolveConcreteVersion(
+  canonicalName: string,
+  versionSpec: string,
+  base?: string,
+): Promise<string> {
+  const s = versionSpec.trim();
+  if (s.length === 0 || s === "latest" || /[a-zA-Z]/.test(s)) return s.length === 0 ? "latest" : s; // tags & latest
+  // Exact semver provided -> use as-is (no search roundtrip)
+  if (/^\d+\.\d+\.\d+(?:-.+)?$/.test(s)) return s;
+  const origin = base ?? REGISTRY_DEFAULT_BASE;
+  const url = new URL(`/v0.1/servers?search=${encodeURIComponent(canonicalName)}`, origin);
+  const res = await fetch(url, { headers: { Accept: "application/json, application/problem+json" }, redirect: "follow" });
+  if (!res.ok) throw new Error(`Registry search failed: ${res.status}`);
+  const data = (await res.json()) as unknown;
+  const arr = (data as { servers?: ReadonlyArray<{ server?: { name?: string; version?: string } }> }).servers ?? [];
+  const versions = arr
+    .map((e) => e?.server)
+    .filter((s): s is { name: string; version?: string } => !!s && typeof s.name === "string")
+    .filter((s) => s.name === canonicalName)
+    .map((s) => s.version ?? "")
+    .filter((v) => typeof v === "string" && v.length > 0);
+  const match = pickMaxSatisfying(versions, s);
+  if (!match) throw new Error(`No versions satisfy '${s}' for '${canonicalName}'`);
+  return match;
 }

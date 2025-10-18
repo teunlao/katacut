@@ -9,7 +9,7 @@ import { loadAndValidateConfig } from "../../lib/config.js";
 import { resolveFormatFlags } from "../../lib/format.js";
 import { buildSummaryLine, printTableSection } from "../../lib/print.js";
 import { resolveJsonDescriptor } from "../../lib/resolvers/json-url.js";
-import { buildRegistryVersionUrl, isRegistryVersionUrl, resolveCanonicalNameByShort, resolveFromRegistry } from "../../lib/resolvers/registry.js";
+import { buildRegistryVersionUrl, isRegistryVersionUrl, resolveCanonicalNameByShort, resolveConcreteVersion, resolveFromRegistry } from "../../lib/resolvers/registry.js";
 import { REGISTRY_DEFAULT_BASE } from "../../lib/constants.js";
 import { normalizeRegistryVersion } from "../../lib/version.js";
 import { isSmitheryServerUrl } from "../../lib/resolvers/smithery.js";
@@ -45,7 +45,8 @@ export function registerMcpAdd(parent: Command) {
 		.option("--client <id>", "Client id (default: claude-code)")
 		.option("--scope <scope>", "Scope: project|user (default: project)")
 		.option("--registry <url>", "Registry base URL (default: official)")
-		.option("--version <semver>", "Registry version (default: latest)")
+		.option("--version <spec>", "Registry version or range (default: latest)")
+		.option("--save-exact", "Pin concrete version in stdio args like npm --save-exact", false)
 		.option("--dry-run", "Print plan without applying", false)
 		.option("-y, --yes", "Confirm if permissions require explicit consent", false)
 		.option("--json", "Machine-readable output: only JSON plan", false)
@@ -53,16 +54,17 @@ export function registerMcpAdd(parent: Command) {
 		.action(
 			async (
 				ref: string,
-				opts: {
-					readonly client?: string;
-					readonly scope?: Scope;
-					readonly json?: boolean;
-					readonly noSummary?: boolean;
-					readonly dryRun?: boolean;
-					readonly yes?: boolean;
-					readonly registry?: string;
-					readonly version?: string;
-				},
+                opts: {
+                    readonly client?: string;
+                    readonly scope?: Scope;
+                    readonly json?: boolean;
+                    readonly noSummary?: boolean;
+                    readonly dryRun?: boolean;
+                    readonly yes?: boolean;
+                    readonly registry?: string;
+                    readonly version?: string;
+                    readonly saveExact?: boolean;
+                },
 			) => {
 				const clientId = opts.client ?? "claude-code";
 				const adapter = await getAdapter(clientId);
@@ -280,12 +282,17 @@ export function registerMcpAdd(parent: Command) {
 				// Name path (registry): support full (ns/name@ver) and short (name@ver via search)
 				const at = (() => { const i = ref.lastIndexOf("@"); return i > 0 ? i : -1; })();
 				const rawName = at > 0 ? ref.slice(0, at) : ref;
-                const regVersion = normalizeRegistryVersion(at > 0 ? ref.slice(at + 1) : opts.version);
+				const userSpecRaw = at > 0 ? ref.slice(at + 1) : (opts.version ?? "latest");
+				// For bare numbers '5' / '5.4', npm semantics ~ '^5.0.0' / '^5.4.0' when resolving
+				const userSpec = /^(\d+)(?:\.(\d+))?$/.test(userSpecRaw)
+					? `^${normalizeRegistryVersion(userSpecRaw)}`
+					: userSpecRaw;
 				const base = opts.registry ?? REGISTRY_DEFAULT_BASE;
 				try {
 					const regName = rawName.includes("/") ? rawName : await resolveCanonicalNameByShort(rawName, base);
-					const url = buildRegistryVersionUrl(regName, regVersion, base);
-                    const rs = await resolveFromRegistry(url, { requestedVersion: regVersion });
+					const concrete = await resolveConcreteVersion(regName, userSpec, base);
+					const url = buildRegistryVersionUrl(regName, concrete, base);
+					const rs = await resolveFromRegistry(url, { requestedVersion: opts.saveExact ? concrete : undefined });
 					name = rs.name;
 					const cfgEntry: McpServerConfig = rs.config;
 
@@ -333,6 +340,10 @@ export function registerMcpAdd(parent: Command) {
 						return;
 					}
 					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+					// Record resolved version in lock for this name (npm-like lock behavior)
+					if (/^\d+\.\d+\.\d+/.test(concrete)) {
+						expectedLock.mcpServers[name] = { ...expectedLock.mcpServers[name], resolvedVersion: concrete } as any;
+					}
 					const lockPath = resolve(cwd, "katacut.lock.json");
 					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
 					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);

@@ -53,7 +53,7 @@ describe("kc mcp add <name>@<version> pins npm version in stdio args", () => {
       const program = new Command();
       registerMcpCommand(program);
       const cwdSpy = vi.spyOn(process, "cwd").mockReturnValue(dir);
-      await program.parseAsync(["node", "cli", "mcp", "add", "com.example/pkg@1.2.3"], { from: "node" });
+      await program.parseAsync(["node", "cli", "mcp", "add", "com.example/pkg@1.2.3", "--save-exact"], { from: "node" });
       cwdSpy.mockRestore();
 
       const cfg = JSON.parse(await readFile(join(dir, "katacut.config.jsonc"), "utf8")) as {
@@ -68,4 +68,3 @@ describe("kc mcp add <name>@<version> pins npm version in stdio args", () => {
     }
   });
 });
-
