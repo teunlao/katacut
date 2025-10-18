@@ -1,19 +1,25 @@
-export type Transport = "http" | "stdio";
+export type Transport = "http" | "sse" | "stdio";
 
 export interface ServerJsonHttp {
-	readonly type: "http";
-	readonly url: string;
-	readonly headers?: Record<string, string>;
+    readonly type: "http";
+    readonly url: string;
+    readonly headers?: Record<string, string>;
 }
 
 export interface ServerJsonStdio {
-	readonly type: "stdio";
-	readonly command: string;
-	readonly args?: string[];
-	readonly env?: Record<string, string>;
+    readonly type: "stdio";
+    readonly command: string;
+    readonly args?: string[];
+    readonly env?: Record<string, string>;
 }
 
-export type ServerJson = ServerJsonHttp | ServerJsonStdio;
+export interface ServerJsonSse {
+    readonly type: "sse";
+    readonly url: string;
+    readonly headers?: Record<string, string>;
+}
+
+export type ServerJson = ServerJsonHttp | ServerJsonSse | ServerJsonStdio;
 
 export interface ReadMcpResult {
 	readonly source?: string;

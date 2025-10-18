@@ -160,7 +160,7 @@ export function registerInstallCommand(program: Command) {
 			}
 
 			if (!(await adapter.checkAvailable?.())) {
-				throw new Error("Claude CLI is not available in PATH. Please install and try again.");
+				throw new Error(`${adapter.id} CLI is not available in PATH. Please install and try again.`);
 			}
 
 			const desired = adapter.desiredFromConfig(config);

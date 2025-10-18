@@ -22,6 +22,7 @@
 	},
 	"dependencies": {
 		"@katacut/adapter-client-claude-code": "workspace:*",
+		"@katacut/adapter-client-gemini-cli": "workspace:*",
 		"@katacut/core": "workspace:*",
 		"@katacut/schema": "workspace:*",
 		"@katacut/utils": "workspace:*",

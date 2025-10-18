@@ -9,6 +9,7 @@
     { "path": "packages/adapters/client-cursor/tsconfig.build.json" },
     { "path": "packages/adapters/client-vscode/tsconfig.build.json" },
     { "path": "packages/adapters/client-claude-code/tsconfig.build.json" },
+    { "path": "packages/adapters/client-gemini-cli/tsconfig.build.json" },
     { "path": "tsconfig.vitest.json" }
   ]
 }

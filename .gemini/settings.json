@@ -1,0 +1,24 @@
+{
+  "mcpServers": {
+    "mcp-server-filesystem": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@agent-infra/mcp-server-filesystem"
+      ]
+    },
+    "memory-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@letta-ai/memory-mcp@2.0.2"
+      ]
+    },
+    "neverinfamous-memory-journal-mcp": {
+      "httpUrl": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp",
+      "headers": {
+        "Authorization": "Bearer {smithery_api_key}"
+      }
+    }
+  }
+}

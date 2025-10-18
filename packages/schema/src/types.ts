@@ -3,7 +3,7 @@ export interface ProfileConfig {
 	env?: Record<string, string>;
 }
 
-export type McpTransport = "http" | "stdio";
+export type McpTransport = "http" | "sse" | "stdio";
 
 export type McpScope = "project" | "workspace" | "user" | "global";
 
@@ -22,9 +22,15 @@ export interface BaseMcpServerConfig {
 }
 
 export interface HttpMcpServerConfig extends BaseMcpServerConfig {
-	transport: "http";
-	url: string;
-	headers?: Record<string, string>;
+    transport: "http";
+    url: string;
+    headers?: Record<string, string>;
+}
+
+export interface SseMcpServerConfig extends BaseMcpServerConfig {
+    transport: "sse";
+    url: string;
+    headers?: Record<string, string>;
 }
 
 export interface StdioMcpServerConfig extends BaseMcpServerConfig {
@@ -34,7 +40,7 @@ export interface StdioMcpServerConfig extends BaseMcpServerConfig {
 	env?: Record<string, string>;
 }
 
-export type McpServerConfig = HttpMcpServerConfig | StdioMcpServerConfig;
+export type McpServerConfig = HttpMcpServerConfig | SseMcpServerConfig | StdioMcpServerConfig;
 
 export interface MetadataConfig {
 	name?: string;

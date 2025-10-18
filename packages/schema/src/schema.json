@@ -52,7 +52,7 @@
 					"required": ["transport"],
 					"properties": {
 						"transport": {
-							"enum": ["http", "stdio"]
+							"enum": ["http", "sse", "stdio"]
 						},
 						"name": {
 							"type": "string"
@@ -116,6 +116,19 @@
 										"type": "object",
 										"additionalProperties": { "type": "string" }
 									}
+								}
+							}
+						},
+						{
+							"if": {
+								"properties": { "transport": { "const": "sse" } },
+								"required": ["transport"]
+							},
+							"then": {
+								"required": ["url"],
+								"properties": {
+									"url": { "type": "string", "format": "uri" },
+									"headers": { "type": "object", "additionalProperties": { "type": "string" } }
 								}
 							}
 						},

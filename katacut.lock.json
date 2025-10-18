@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "client": "claude-code",
+  "client": "gemini-cli",
   "mcpServers": {
     "mcp-server-filesystem": {
       "scope": "project",

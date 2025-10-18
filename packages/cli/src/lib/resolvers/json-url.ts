@@ -12,11 +12,14 @@ export async function resolveJsonDescriptor(u: URL, timeoutMs = 10000, maxSize =
 		const text = await res.text();
 		if (text.length > maxSize) throw new Error("Descriptor too large");
 		const parsed: unknown = JSON.parse(text);
-		if (!isServerJson(parsed)) throw new Error("Descriptor is not a valid ServerJson (http|stdio)");
-		const cfg: McpServerConfig =
-			parsed.type === "http"
-				? { transport: "http", url: parsed.url, headers: parsed.headers }
-				: { transport: "stdio", command: parsed.command, args: parsed.args, env: parsed.env };
+        if (!isServerJson(parsed)) throw new Error("Descriptor is not a valid ServerJson (http|sse|stdio)");
+        const cfg: McpServerConfig =
+            parsed.type === "http"
+                ? { transport: "http", url: parsed.url, headers: parsed.headers }
+                : parsed.type === "sse"
+                ? // Our schema may not yet support 'sse'; treat as http for config but keep in adapter logic if needed.
+                  { transport: "http", url: parsed.url, headers: parsed.headers }
+                : { transport: "stdio", command: parsed.command, args: parsed.args, env: parsed.env };
 		const name = deriveNameFromUrl(u);
 		return { name, config: cfg };
 	} finally {
