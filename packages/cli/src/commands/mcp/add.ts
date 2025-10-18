@@ -60,6 +60,18 @@ function toConfigFromServerJson(
 	return { transport: "stdio", command: s.command, args: s.args, env: s.env };
 }
 
+// ---- Smithery server URL support ----
+function isSmitheryServerUrl(u: URL): boolean {
+  return u.hostname === "server.smithery.ai" && /\/mcp\/?$/.test(u.pathname);
+}
+
+function nameFromSmitheryUrl(u: URL): string {
+  const parts = u.pathname.split("/").filter(Boolean);
+  const idx = parts.lastIndexOf("mcp");
+  const base = idx > 0 ? parts[idx - 1] : parts.pop() ?? "server";
+  return base.replace(/^@/, "");
+}
+
 // ---- Registry URL support (v0 / v0.1) ----
 function isRegistryVersionUrl(u: URL): boolean {
 	if (u.hostname !== "registry.modelcontextprotocol.io") return false;
@@ -173,9 +185,41 @@ export function registerMcpAdd(parent: Command) {
 				const scope: Scope = opts.scope === "user" ? "user" : "project";
 				const fmt = resolveFormatFlags(process.argv, { json: opts.json, noSummary: opts.noSummary });
 
-				// Resolve descriptor
-				const asUrl = isHttpUrl(ref);
+					// Resolve descriptor
+					const asUrl = isHttpUrl(ref);
       let name: string;
+
+      // 1) Smithery URL (streamable HTTP endpoint)
+      if (asUrl && isSmitheryServerUrl(asUrl)) {
+        name = nameFromSmitheryUrl(asUrl);
+        const cfgEntry: McpServerConfig = { transport: "http", url: asUrl.toString() };
+
+        const config = await loadAndValidateConfig(undefined);
+        const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
+        if (!edited.mcp) edited.mcp = {};
+        edited.mcp[name] = cfgEntry;
+        const cfgPath = resolve(cwd, "katacut.config.jsonc");
+        await writeFile(cfgPath, JSON.stringify(edited, null, 2), "utf8");
+
+        const desired = adapter.desiredFromConfig(edited);
+        const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
+        const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
+        console.log(JSON.stringify(plan, null, 2));
+        printTableSection("Plan", ["Name", "Action", "Scope"], plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]), fmt);
+        if (opts.dryRun) return;
+        const applyPlan = plan.filter((p) => p.action !== "skip").map((p) => ({ action: p.action as ("add"|"update"|"remove"), name: p.name, json: p.json }));
+        const summary = await adapter.applyInstall(applyPlan, scope, cwd);
+        const skipped = plan.filter((p) => p.action === "skip").length;
+        if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summary, skipped));
+        printTableSection("Summary", ["Added","Updated","Removed","Skipped","Failed"], [[String(summary.added), String(summary.updated), String(summary.removed), String(skipped), String(summary.failed)]], fmt);
+        if (summary.failed > 0) { process.exitCode = 1; return; }
+        const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+        const lockPath = resolve(cwd, "katacut.lock.json");
+        await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+        const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
+        await appendProjectStateRun(cwd, { at: new Date().toISOString(), client: adapter.id, requestedScope: scope, realizedScope: scope, mode: "native", intent: "project", result: summary, entries: stateEntries });
+        return;
+      }
 				if (asUrl && isRegistryVersionUrl(asUrl)) {
 					const { name: regName, server } = await fetchServerJsonFromRegistry(asUrl);
 					name = nameFromRegistryFull(regName);

@@ -41,9 +41,39 @@ KataCut — «единая точка правды» для инструмент
   - `kc lock generate` — сформировать lockfile из конфига (без применения).
   - `kc lock verify` — сверить lockfile с фактическим состоянием; ненулевой код при расхождении (под CI).
   - `kc ci` — обёртка над `lock verify` с JSON‑отчётом и ненулевым кодом при mismatch (удобно для пайплайнов).
-- Поведение `kc install` (аналог npm/pnpm):
-  - По умолчанию после успешного применения обновляет `katacut.lock.json`.
-  - `--no-write-lock` — не трогать lock при применении.
+  - Поведение `kc install` (аналог npm/pnpm):
+    - По умолчанию после успешного применения обновляет `katacut.lock.json`.
+    - `--no-write-lock` — не трогать lock при применении.
+    - `--frozen-lock` — требует существующий lock и точное соответствие.
+    - `--lockfile-only` — обновить/создать lockfile и выйти.
+
+## Новое (установка по ссылке из официального реестра MCP)
+Поддерживаем добавление MCP напрямую по ссылке на карточку версии в реестре:
+- Формат ссылок: `https://registry.modelcontextprotocol.io/v0.1/servers/{url-encoded-name}/versions/{latest|X.Y.Z}` (также `/v0/...`).
+- Команда: `kc mcp add <ссылка>`
+  - Реестр → нормализация транспорта → запись в конфиг → план → применение → lock/state.
+  - Приоритет транспорта: remotes (HTTP/Streamable HTTP/SSE) → packages (npm + STDIO; `npx -y <package>`).
+  - По умолчанию — project‑scope (для user добавь `--scope user`).
+- Примеры (реальные):
+  - HTTP (remotes): `kc mcp add "https://registry.modelcontextprotocol.io/v0.1/servers/ai.smithery%2FHint-Services-obsidian-github-mcp/versions/latest" --scope user`
+  - STDIO (npm): `kc mcp add "https://registry.modelcontextprotocol.io/v0.1/servers/io.github.bytedance%2Fmcp-server-filesystem/versions/latest"`
+- Ограничения:
+  - Обязательные аргументы пакета (например, `allowed-directories`) пока не запрашиваются интерактивно — доработаем отдельно.
+  - Секретные заголовки из remotes (например, `Authorization`) нужно задавать явно.
+
+## Что узнали про MCP Registry
+- Хост: `registry.modelcontextprotocol.io`; поддерживаются `/v0` и `/v0.1`.
+- Поиск/получение: список `GET /v0.1/servers?search=…&version=latest`; карточка версии `GET /v0.1/servers/{name}/versions/{version|latest}`.
+- Структура:
+  - `server.remotes` — HTTP/Streamable HTTP/SSE с заголовками.
+  - `server.packages` — npm‑пакеты для STDIO с `runtimeHint` (`npx`) и идентификатором.
+- Нормализация в KataCut:
+  - remotes → `{ type: "http", url, headers? }`.
+  - npm+stdio → `{ type: "stdio", command: "npx", args: ["-y", "<package>"] }`.
+
+## Состояние данных в репозитории
+- Project‑scope очищен (пустой `.mcp.json`), user‑scope оставлен без изменений.
+- Готовы оперативно добавить выбранные MCP по ссылкам из реестра одной командой.
   - `--frozen-lock` — «замороженный» режим: требует существующий lock и точное соответствие конфигу; при расхождении — ошибка, без изменений.
   - `--lockfile-only` — обновить/создать lockfile и выйти, не применяя изменения.
   - По умолчанию scope=`project`. Для `--prune` требуется подтверждение `-y/--yes`.
