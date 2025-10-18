@@ -16,3 +16,7 @@ function sortDeep<T>(input: T): T {
   }
   return input;
 }
+
+export function deepEqualStable(a: unknown, b: unknown): boolean {
+  return stableStringify(a) === stableStringify(b);
+}

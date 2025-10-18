@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import type { InstallStep, ServerJson } from "@katacut/core";
 import { Command } from "commander";
 import { mkdtemp, rm, writeFile, readFile, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -19,13 +20,15 @@ describe("kc mcp remove (default)", () => {
           checkAvailable: async () => true,
           readProject: async () => ({ mcpServers: { keep: { type: "http", url: "https://k" }, del: { type: "http", url: "https://d" } } }),
           readUser: async () => ({ mcpServers: {} }),
-          desiredFromConfig: (c: unknown) => {
+          desiredFromConfig: (c: unknown): Record<string, ServerJson> => {
             const o = c as { mcp: Record<string, { transport: string; url?: string; command?: string }> };
-            const out: Record<string, { type: "http"|"stdio"; url?: string; command?: string }> = {};
-            for (const [k,v] of Object.entries(o.mcp)) out[k] = v.transport === "http" ? { type: "http", url: v.url } : { type: "stdio", command: v.command };
-            return out as any;
+            const out: Record<string, ServerJson> = {};
+            for (const [k,v] of Object.entries(o.mcp)) out[k] = v.transport === "http"
+              ? { type: "http", url: String(v.url ?? "") }
+              : { type: "stdio", command: String(v.command ?? "") };
+            return out;
           },
-          applyInstall: async (plan: readonly any[], scope: "project"|"user") => {
+          applyInstall: async (plan: readonly InstallStep[], _scope: "project"|"user") => {
             // emulate prune remove of 'del'
             const removed = plan.filter(p => p.action === "remove").length;
             return { added: 0, updated: 0, removed, failed: 0 };

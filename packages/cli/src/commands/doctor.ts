@@ -6,8 +6,8 @@ import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import { resolveFormatFlags } from "../lib/format.js";
 import { readProjectState } from "../lib/state.js";
-import { renderTable } from "../lib/table.js";
-import { stableStringify } from "@katacut/utils";
+import { printTableSection } from "../lib/print.js";
+import { deepEqualStable } from "@katacut/utils";
 
 interface PathCheck { readonly path: string; readonly readable?: boolean; readonly writable?: boolean }
 
@@ -56,18 +56,18 @@ export function registerDoctorCommand(program: Command) {
       const cliAvailable = (await adapter.checkAvailable?.()) ?? true;
       const caps = (await adapter.capabilities?.()) ?? { supportsProject: true, supportsUser: true, emulateProjectWithUser: false, supportsGlobalExplicit: false };
 
-      const projectPath = join(cwd, ".mcp.json");
+      const project = await adapter.readProject(cwd);
+      const projectPath = project.source ?? join(cwd, ".mcp.json");
       const projectCheck = await checkPath(projectPath);
 
       const user = await adapter.readUser();
       const userPath = user.source;
       const userCheck = userPath ? await checkPath(userPath) : undefined;
 
-      const project = await adapter.readProject(cwd);
       const conflicts: string[] = [];
       for (const [name, json] of Object.entries(project.mcpServers)) {
         const u = user.mcpServers[name];
-        if (u && stableStringify(u) !== stableStringify(json)) conflicts.push(name);
+        if (u && !deepEqualStable(u, json)) conflicts.push(name);
       }
 
       const state = await readProjectState(cwd);
@@ -112,7 +112,7 @@ export function registerDoctorCommand(program: Command) {
           ["Conflicts", report.conflicts && report.conflicts.length > 0 ? report.conflicts.join(", ") : "none"],
           ["Status", report.status],
         ];
-        renderTable(headers, rows);
+        printTableSection("Doctor Summary", headers, rows, fmt);
         const recs: string[] = [];
         if (!cliAvailable) recs.push("Install or expose client CLI in PATH.");
         if (!projectCheck.writable) recs.push("Make project .mcp.json writable or run with appropriate permissions.");

@@ -3,11 +3,11 @@ import { getAdapter } from "../../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../../lib/config.js";
 import { resolve } from "node:path";
 import { writeFile } from "node:fs/promises";
-import { buildLock, diffDesiredCurrent, type Lockfile, type Scope } from "@katacut/core";
+import { buildLock, diffDesiredCurrent, type Lockfile } from "@katacut/core";
 import { appendProjectStateRun, buildStateEntries } from "../../lib/state.js";
 import { resolveFormatFlags } from "../../lib/format.js";
 import type { KatacutConfig } from "@katacut/schema";
-import type { ServerJson } from "@katacut/core";
+import type { Action } from "@katacut/core";
 
 interface RemoveOptions {
   readonly client: string;
@@ -59,7 +59,7 @@ export function registerMcpRemove(parent: Command) {
           const result = await adapter.applyInstall(names.map((n) => ({ action: "remove" as const, name: n })), s, cwd);
           failed += result.failed; removed += result.removed;
         }
-        const current = scopes.includes("project") ? await adapter.readProject(cwd) : await adapter.readUser();
+        const _current = scopes.includes("project") ? await adapter.readProject(cwd) : await adapter.readUser();
         await appendProjectStateRun(cwd, {
           at: new Date().toISOString(), client: adapter.id,
           requestedScope: scopes[0], realizedScope: scopes[0], mode: "native", intent: "local",
@@ -74,14 +74,14 @@ export function registerMcpRemove(parent: Command) {
       const config = await loadAndValidateConfig(opts.config);
       // Remove names from config.mcp
       const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
-      for (const n of names) delete edited.mcp![n];
+      for (const n of names) delete edited.mcp?.[n];
       // Compute desired and current for first scope (if both, handle project then user)
       for (const s of scopes) {
         const desired = adapter.desiredFromConfig(edited);
         const current = s === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
         const plan = diffDesiredCurrent(desired, current.mcpServers, true, true);
         const applyPlan = plan
-          .filter((p): p is { action: "add"|"update"|"remove"; name: string; json?: ServerJson } => p.action !== "skip")
+          .filter((p): p is Action & { action: "add"|"update"|"remove" } => p.action !== "skip")
           .map((p) => ({ action: p.action, name: p.name, json: p.json }));
         const summary = await adapter.applyInstall(applyPlan, s, cwd);
         const mode: "native"|"emulated" = "native";

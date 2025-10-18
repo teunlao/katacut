@@ -4,4 +4,4 @@ export { KatacutError } from "./errors.js";
 export { assert } from "./assert.js";
 export { isPlainObject } from "./predicates.js";
 export { execCapture } from "./proc.js";
-export { stableStringify } from "./json.js";
+export { stableStringify, deepEqualStable } from "./json.js";

@@ -5,9 +5,9 @@ import { buildLock, diffDesiredCurrent, type Lockfile } from "@katacut/core";
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../lib/config.js";
-import { appendProjectStateRun, buildStateEntries } from "../lib/state.js";
 import { resolveFormatFlags } from "../lib/format.js";
-import { renderTable } from "../lib/table.js";
+import { printTableSection } from "../lib/print.js";
+import { appendProjectStateRun, buildStateEntries } from "../lib/state.js";
 
 export interface InstallOptions {
 	readonly config?: string;
@@ -19,10 +19,10 @@ export interface InstallOptions {
 	readonly writeLock?: boolean;
 	readonly frozenLock?: boolean;
 	readonly lockfileOnly?: boolean;
-  readonly yes?: boolean;
-  readonly json?: boolean;
-  readonly noSummary?: boolean;
-  readonly local?: boolean;
+	readonly yes?: boolean;
+	readonly json?: boolean;
+	readonly noSummary?: boolean;
+	readonly local?: boolean;
 }
 
 export function registerInstallCommand(program: Command) {
@@ -37,10 +37,10 @@ export function registerInstallCommand(program: Command) {
 		.option("--no-write-lock", "do not write katacut.lock.json after apply")
 		.option("--frozen-lock", "require existing lock to match config and state; make no changes", false)
 		.option("--lockfile-only", "generate/update lockfile without applying changes", false)
-    .option("-y, --yes", "confirm destructive operations like --prune", false)
-    .option("--json", "machine-readable output: only JSON plan (no tables, no labels)", false)
-    .option("--no-summary", "suppress human tables and labels; keep JSON only where applicable", false)
-    .option("--local", "apply locally only (do not touch config/lock); record state as local intent", false)
+		.option("-y, --yes", "confirm destructive operations like --prune", false)
+		.option("--json", "machine-readable output: only JSON plan (no tables, no labels)", false)
+		.option("--no-summary", "suppress human tables and labels; keep JSON only where applicable", false)
+		.option("--local", "apply locally only (do not touch config/lock); record state as local intent", false)
 		.action(async (options: InstallOptions) => {
 			const cwd = process.cwd();
 
@@ -105,24 +105,30 @@ export function registerInstallCommand(program: Command) {
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);
 
-      // Print plan
-      const fmt = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
-      if (!fmt.json && !fmt.noSummary) console.log("Plan:");
-      console.log(JSON.stringify(plan, null, 2));
-      if (!fmt.json && !fmt.noSummary) printPlanTable(plan, scope);
+			// Print plan
+			const fmt = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
+			console.log(JSON.stringify(plan, null, 2));
+			printTableSection(
+				"Plan",
+				["Name", "Action", "Scope"],
+				plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)] as const),
+				fmt,
+			);
 
-      // Safety: require --yes for --prune to avoid accidental removals
-      if (options.prune && !options.yes) {
-        console.error("Refusing to prune without confirmation. Re-run with --yes to proceed.");
-        process.exitCode = 1;
-        return;
-      }
+			// Safety: require --yes for --prune to avoid accidental removals
+			if (options.prune && !options.yes) {
+				console.error("Refusing to prune without confirmation. Re-run with --yes to proceed.");
+				process.exitCode = 1;
+				return;
+			}
 
-      if (options.local && options.prune) {
-        console.error("--local cannot be used together with --prune. Remove entries via 'kc mcp remove --local' or run project install without --local.");
-        process.exitCode = 1;
-        return;
-      }
+			if (options.local && options.prune) {
+				console.error(
+					"--local cannot be used together with --prune. Remove entries via 'kc mcp remove --local' or run project install without --local.",
+				);
+				process.exitCode = 1;
+				return;
+			}
 
 			if (options.dryRun) return;
 
@@ -131,58 +137,49 @@ export function registerInstallCommand(program: Command) {
 			const applyPlan = plan
 				.filter((p) => p.action !== "skip")
 				.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
-      const summary = await adapter.applyInstall(applyPlan, scope, cwd);
-      if (!fmt.json && !fmt.noSummary) {
-        console.log(
-          `Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
-        );
-        printSummaryTable(summary, skipped);
-      }
+			const summary = await adapter.applyInstall(applyPlan, scope, cwd);
+			if (!fmt.json && !fmt.noSummary) {
+				console.log(
+					`Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
+				);
+			}
+			printTableSection(
+				"Summary",
+				["Added", "Updated", "Removed", "Skipped", "Failed"],
+				[
+					[
+						String(summary.added),
+						String(summary.updated),
+						String(summary.removed),
+						String(skipped),
+						String(summary.failed),
+					],
+				],
+				fmt,
+			);
 			if (summary.failed > 0) {
 				process.exitCode = 1;
 				return;
 			}
 
-      // Record state for diagnostics
-      const mode: "native" | "emulated" = scope === requestedScope ? "native" : "emulated";
-      const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
-      await appendProjectStateRun(cwd, {
-        at: new Date().toISOString(),
-        client: adapter.id,
-        requestedScope,
-        realizedScope: scope,
-        mode,
-        intent: options.local ? "local" : "project",
-        result: summary,
-        entries: stateEntries,
-      });
+			// Record state for diagnostics
+			const mode: "native" | "emulated" = scope === requestedScope ? "native" : "emulated";
+			const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
+			await appendProjectStateRun(cwd, {
+				at: new Date().toISOString(),
+				client: adapter.id,
+				requestedScope,
+				realizedScope: scope,
+				mode,
+				intent: options.local ? "local" : "project",
+				result: summary,
+				entries: stateEntries,
+			});
 
-      // Write lock by default (unless suppressed) after successful apply (skip when --local)
-      if (!options.local && options.writeLock !== false) {
-        await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-        console.log(`Updated lockfile: ${lockPath}`);
-      }
+			// Write lock by default (unless suppressed) after successful apply (skip when --local)
+			if (!options.local && options.writeLock !== false) {
+				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+				console.log(`Updated lockfile: ${lockPath}`);
+			}
 		});
-}
-
-type PlanItem = { readonly action: string; readonly name: string };
-function printPlanTable(plan: readonly PlanItem[], scope: Scope) {
-	const headers: readonly string[] = ["Name", "Action", "Scope"];
-	const rows: readonly (readonly string[])[] = plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)] as const);
-	renderTable(headers, rows);
-}
-
-function printSummaryTable(
-	summary: { added: number; updated: number; removed: number; failed: number },
-	skipped: number,
-) {
-	const headers: readonly string[] = ["Added", "Updated", "Removed", "Skipped", "Failed"];
-	const rows: readonly (readonly string[])[] = [[
-		String(summary.added),
-		String(summary.updated),
-		String(summary.removed),
-		String(skipped),
-		String(summary.failed),
-	]];
-	renderTable(headers, rows);
 }

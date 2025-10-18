@@ -22,4 +22,3 @@ export function resolveFormatFlags(argv: readonly string[], opts: FormatOptions)
   const noSummary = Boolean(opts.noSummary) || rawHas("--no-summary");
   return { json, noSummary };
 }
-

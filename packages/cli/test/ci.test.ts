@@ -20,9 +20,9 @@ describe("kc ci", () => {
         const mod = await orig();
         return {
           ...mod,
-          verifyLock: (l: unknown, project: { mcpServers: Record<string, unknown> }) => {
+          verifyLock: (_l: unknown, project: { mcpServers: Record<string, unknown> }) => {
             // Consider mismatch when project has no 'x'
-            const ok = Object.prototype.hasOwnProperty.call(project.mcpServers, 'x');
+            const ok = Object.hasOwn(project.mcpServers, 'x');
             return { client: 'claude-code', status: ok ? "ok" : "mismatch", mismatches: ok ? [] : [{ name: "x", reason: "missing" }] };
           },
         };
@@ -55,8 +55,8 @@ describe("kc ci", () => {
         const mod = await orig();
         return {
           ...mod,
-          verifyLock: (l: unknown, project: { mcpServers: Record<string, unknown> }) => {
-            const ok = Object.prototype.hasOwnProperty.call(project.mcpServers, 'x');
+          verifyLock: (_l: unknown, project: { mcpServers: Record<string, unknown> }) => {
+            const ok = Object.hasOwn(project.mcpServers, 'x');
             return { client: 'claude-code', status: ok ? "ok" : "mismatch", mismatches: ok ? [] : [{ name: "x", reason: "missing" }] };
           },
         };
