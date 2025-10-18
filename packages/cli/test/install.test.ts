@@ -154,10 +154,10 @@ describe('kc install (CLI)', () => {
 		const program = new Command();
 		registerInstallCommand(program);
 
-    await program.parseAsync(
-      ['node', 'cli', 'install', '--client', 'claude-code', '--scope', 'project', '--no-prune', '-c', configPath],
-      { from: 'node' },
-    );
+		await program.parseAsync(
+			['node', 'cli', 'install', '--client', 'claude-code', '--scope', 'project', '--no-prune', '-c', configPath],
+			{ from: 'node' },
+		);
 
 		// First two logs: Plan label + plan JSON, then Summary line
 		const jsonPlan = logSpy.mock.calls

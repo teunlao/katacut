@@ -8,7 +8,7 @@ CI check: verify the current state against `katacut.lock.json`.
 
 Usage
 ```
-kc ci [options]
+ktc ci [options]
 ```
 
 Behavior
@@ -22,4 +22,3 @@ Options
 Exit codes
 - 0: ok
 - 1: mismatch
-

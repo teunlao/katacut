@@ -1,0 +1,20 @@
+{
+	"name": "katacut",
+	"version": "0.0.0",
+	"private": false,
+	"type": "module",
+	"bin": {
+		"katacut": "./bin/katacut.mjs",
+		"ktc": "./bin/ktc.mjs"
+	},
+	"description": "KataCut CLI main package providing the 'katacut' binary.",
+	"files": [
+		"bin"
+	],
+	"dependencies": {
+		"@katacut/cli": "workspace:*"
+	},
+	"publishConfig": {
+		"access": "public"
+	}
+}

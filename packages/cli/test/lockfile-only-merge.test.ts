@@ -9,7 +9,7 @@ describe('kc install --lockfile-only writes a clean snapshot (no merge)', () => 
 	beforeEach(() => logSpy.mockClear());
 	afterEach(() => logSpy.mockClear());
 
-    it('replaces existing lock with exact desired entries', async () => {
+	it('replaces existing lock with exact desired entries', async () => {
 		const dir = await mkdtemp(join(tmpdir(), 'kc-lock-merge-'));
 		try {
 			const cfg = { version: '0.1.0', mcp: { a: { transport: 'http', url: 'https://a' } } } as const;
@@ -68,9 +68,9 @@ describe('kc install --lockfile-only writes a clean snapshot (no merge)', () => 
 			const after = await stat(lockPath);
 			expect(after.mtimeMs).toBeGreaterThanOrEqual(before.mtimeMs);
 			const text = await readFile(lockPath, 'utf8');
-            const parsed = JSON.parse(text) as { mcpServers: Record<string, unknown> };
-            // pnpm-like: no merge, only desired entries remain
-            expect(Object.keys(parsed.mcpServers).sort()).toEqual(['a']);
+			const parsed = JSON.parse(text) as { mcpServers: Record<string, unknown> };
+			// pnpm-like: no merge, only desired entries remain
+			expect(Object.keys(parsed.mcpServers).sort()).toEqual(['a']);
 			cwdSpy.mockRestore();
 		} finally {
 			await rm(dir, { recursive: true, force: true });

@@ -8,7 +8,7 @@ MCP utilities for listing, adding, and removing servers in client configs.
 
 ## mcp list
 ```
-kc mcp list --client <id> [--scope project|user]
+ktc mcp list --client <id> [--scope project|user]
 ```
 Behavior
 - Reads project `./.mcp.json` (or client‑specific files) and user config files.
@@ -16,7 +16,7 @@ Behavior
 
 ## mcp add
 ```
-kc mcp add <source>
+ktc mcp add <source>
 ```
 `<source>` may be:
 - A registry URL
@@ -30,10 +30,9 @@ Flags
 
 ## mcp remove
 ```
-kc mcp remove <name> [--scope project|user]
-kc mcp remove --local <name>
+ktc mcp remove <name> [--scope project|user]
+ktc mcp remove --local <name>
 ```
 Behavior
 - Default: edits config and applies removal to clients; updates lock and state.
 - `--local`: only at client (keeps config/lock intact); writes project state record.
-

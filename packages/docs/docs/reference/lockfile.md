@@ -21,10 +21,10 @@ Format (v1)
 ```
 
 Behavior
-- `kc install --lockfile-only` writes a clean snapshot (no merge).
-- `kc install` writes a clean snapshot after successful apply (unless `--no-write-lock`).
-- `kc install --frozen-lockfile` requires the current desired state to match the lock and applies strictly from lock without writing.
-- `kc install --from-lock` ignores config and applies strictly from lock snapshots.
+- `ktc install --lockfile-only` writes a clean snapshot (no merge).
+- `ktc install` writes a clean snapshot after successful apply (unless `--no-write-lock`).
+- `ktc install --frozen-lockfile` requires the current desired state to match the lock and applies strictly from lock without writing.
+- `ktc install --from-lock` ignores config and applies strictly from lock snapshots.
 
 Verification
-- `kc lock verify` compares current state (project/user) with the lock and reports mismatches (`missing`, `fingerprint`, `scope`, `extra`).
+- `ktc lock verify` compares current state (project/user) with the lock and reports mismatches (`missing`, `fingerprint`, `scope`, `extra`).

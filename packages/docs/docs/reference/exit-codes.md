@@ -9,7 +9,7 @@ title: Exit Codes
 - 1: failure
   - Apply failures (any client reports `failed > 0`).
   - `--from-lock`/`--frozen-lockfile` mismatch or missing snapshots.
-  - Verification mismatch in `kc lock verify` or `kc ci`.
+  - Verification mismatch in `ktc lock verify` or `ktc ci`.
 
 Future strictness
 - A "fail on missing clients" flag may be introduced to enforce availability in CI.

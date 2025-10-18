@@ -14,8 +14,10 @@
 		"typecheck": "pnpm exec tsc -b",
 		"typecheck:watch": "pnpm exec tsc -b --watch",
 		"dev": "pnpm exec tsc -b --watch",
-		"katacut": "node packages/cli/bin/katacut.mjs",
-		"kc": "node packages/cli/bin/katacut.mjs"
+		"docs:dev": "pnpm -C packages/docs docs:dev"
+	},
+	"dependencies": {
+		"katacut": "workspace:*"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^2.2.6",

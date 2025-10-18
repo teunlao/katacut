@@ -1,9 +1,9 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { createInterface } from 'node:readline/promises';
 import process from 'node:process';
+import { createInterface } from 'node:readline/promises';
 import type { Scope } from '@katacut/core';
-import { buildDesired, buildLock, diffDesiredCurrent, type Lockfile, mergeLock } from '@katacut/core';
+import { buildDesired, buildLock, diffDesiredCurrent, type Lockfile } from '@katacut/core';
 import type { Command } from 'commander';
 import { getAdapter } from '../lib/adapters/registry.js';
 import { loadAndValidateConfig } from '../lib/config.js';
@@ -343,7 +343,7 @@ export function registerInstallCommand(program: Command) {
 				}
 				if (options.local && options.prune) {
 					console.error(
-						"--local cannot be used together with --prune. Remove entries via 'kc mcp remove --local' or run project install without --local.",
+						"--local cannot be used together with --prune. Remove entries via 'ktc mcp remove --local' or run project install without --local.",
 					);
 					process.exitCode = 1;
 					return;

@@ -1,18 +1,25 @@
 {
 	"name": "@katacut/cli",
 	"version": "0.0.0",
-	"private": true,
+	"private": false,
 	"type": "module",
 	"bin": {
 		"katacut": "./bin/katacut.mjs",
-		"kc": "./bin/katacut.mjs"
+		"ktc": "./bin/katacut.mjs"
 	},
-	"exports": "./dist/index.js",
+	"exports": {
+		".": "./dist/index.js",
+		"./bin/katacut.mjs": "./bin/katacut.mjs",
+		"./bin/*": "./bin/*"
+	},
 	"types": "./dist/index.d.ts",
 	"files": [
 		"bin",
 		"dist"
 	],
+	"publishConfig": {
+		"access": "public"
+	},
 	"scripts": {
 		"build": "tsc --build tsconfig.build.json",
 		"lint": "biome lint .",

@@ -156,7 +156,7 @@ describe('kc install lockfile behavior', () => {
 		}
 	});
 
-it('respects --no-write-lock and --lockfile-only / --frozen-lockfile', async () => {
+	it('respects --no-write-lock and --lockfile-only / --frozen-lockfile', async () => {
 		const dir = await mkdtemp(join(tmpdir(), 'kc-install-lock-2-'));
 		try {
 			const cfg = { version: '0.1.0', mcp: { a: { transport: 'http', url: 'https://a' } } } as const;
@@ -228,7 +228,7 @@ it('respects --no-write-lock and --lockfile-only / --frozen-lockfile', async () 
 			const st2 = await stat(join(dir, 'katacut.lock.json'));
 			expect(st2.isFile()).toBe(true);
 
-            // frozen-lockfile mismatch: change config, expect early exit w/o apply
+			// frozen-lockfile mismatch: change config, expect early exit w/o apply
 			await writeFile(
 				join(dir, 'katacut.config.jsonc'),
 				JSON.stringify({ version: '0.1.0', mcp: { b: { transport: 'http', url: 'https://b' } } }),
@@ -244,7 +244,7 @@ it('respects --no-write-lock and --lockfile-only / --frozen-lockfile', async () 
 					'claude-code',
 					'--scope',
 					'project',
-                    '--frozen-lockfile',
+					'--frozen-lockfile',
 					'-c',
 					'katacut.config.jsonc',
 				],

@@ -9,7 +9,7 @@ By default, removes extraneous entries (prune) with interactive confirmation.
 
 Usage
 ```
-kc install|i [options]
+ktc install|i [options]
 ```
 
 Key behavior
@@ -34,22 +34,22 @@ Options
 Examples
 ```
 # Preview changes for project scope
-kc i --dry-run --scope project
+ktc i --dry-run --scope project
 
 # Apply with confirmation on removals (default)
-kc i --scope user
+ktc i --scope user
 
 # Apply without prompts
-kc i -y
+ktc i -y
 
 # From lockfile strictly (no write)
-kc i --frozen-lockfile
+ktc i --frozen-lockfile
 
 # Lockfile only
-kc i --lockfile-only
+ktc i --lockfile-only
 
 # Disable pruning
-kc i --no-prune
+ktc i --no-prune
 ```
 
 Exit codes

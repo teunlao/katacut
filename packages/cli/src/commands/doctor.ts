@@ -183,10 +183,11 @@ export function registerDoctorCommand(program: Command) {
 				if (!projectCheck.writable) recs.push('Make project .mcp.json writable or run with appropriate permissions.');
 				if (userCheck && userCheck.writable === false) recs.push('Fix user settings permissions.');
 				if (conflicts.length > 0) recs.push('Resolve project/user conflicts or run install with desired scope.');
-				if (!last) recs.push("Run 'kc install' to record local state for diagnostics.");
-				if (report.lock?.status === 'missing') recs.push("Generate lockfile: 'kc lock generate' or run 'kc install'.");
+				if (!last) recs.push("Run 'ktc install' to record local state for diagnostics.");
+				if (report.lock?.status === 'missing')
+					recs.push("Generate lockfile: 'ktc lock generate' or run 'ktc install'.");
 				if (report.lock?.status === 'mismatch')
-					recs.push("Run 'kc lock verify' to inspect mismatches; then 'kc install' or update lock.");
+					recs.push("Run 'ktc lock verify' to inspect mismatches; then 'ktc install' or update lock.");
 				if (recs.length > 0) {
 					console.log('Recommendations:');
 					for (const r of recs) console.log(`- ${r}`);

@@ -8,7 +8,7 @@ Lockfile utilities.
 
 ## lock generate
 ```
-kc lock generate [options]
+ktc lock generate [options]
 ```
 Options
 - `-c, --config <path>`: Config file path.
@@ -21,7 +21,7 @@ Behavior
 
 ## lock verify
 ```
-kc lock verify [options]
+ktc lock verify [options]
 ```
 Options
 - `--file <path>`: Path to `katacut.lock.json` (default).
@@ -34,4 +34,3 @@ Behavior
 Exit codes
 - 0: ok
 - 1: mismatch
-

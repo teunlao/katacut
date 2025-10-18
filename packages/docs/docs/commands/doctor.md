@@ -8,7 +8,7 @@ Diagnose environment and client availability.
 
 Usage
 ```
-kc doctor [options]
+ktc doctor [options]
 ```
 
 Behavior
@@ -22,4 +22,3 @@ Common options
 Exit codes
 - 0: diagnostic completed (warnings allowed)
 - 1: strict mode (future flag) may fail on missing clients
-

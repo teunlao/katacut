@@ -17,16 +17,15 @@ Quick start
 ```bash
 # 1) Add desired servers to katacut.config.jsonc
 # 2) Apply to project scope (prune by default with confirmation)
-pnpm kc install --scope project
+pnpm ktc install --scope project
 
 # 3) Generate lockfile
-pnpm kc lock generate --out katacut.lock.json
+pnpm ktc lock generate --out katacut.lock.json
 
 # 4) Verify in CI
-pnpm kc ci
+pnpm ktc ci
 ```
 
 Next steps
 - Read about scopes and client selection.
 - Explore command reference for all flags and workflows.
-
