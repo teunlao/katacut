@@ -1,5 +1,5 @@
 {
-	"name": "@katacut/adapter-client-gemini-cli",
+	"name": "@katacut/adapter-clients-shared",
 	"version": "0.0.0",
 	"private": true,
 	"type": "module",
@@ -16,9 +16,7 @@
 		"dev": "tsc --build tsconfig.build.json --watch"
 	},
 	"dependencies": {
-		"@katacut/schema": "workspace:*",
 		"@katacut/utils": "workspace:*",
-		"@katacut/adapter-clients-shared": "workspace:*",
 		"@katacut/core": "workspace:*"
 	}
 }

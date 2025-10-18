@@ -1,8 +1,9 @@
-import { execCapture, readTextFile } from '@katacut/utils';
+import { execCli } from '@katacut/adapter-clients-shared';
+import { readTextFile } from '@katacut/utils';
 import type { ClaudeScope, ClaudeServerJson } from './types.js';
 
 export async function ensureClaudeAvailable(): Promise<boolean> {
-	const res = await execCapture('claude', ['--help'], {});
+	const res = await execCli('claude', ['--help'], {});
 	return res.code === 0 || res.code === 2;
 }
 
@@ -25,7 +26,7 @@ export async function listClaudeServers(
 }
 
 export async function listClaudeServerNames(cwd = process.cwd()): Promise<Set<string>> {
-	const res = await execCapture('claude', ['mcp', 'list'], { cwd });
+	const res = await execCli('claude', ['mcp', 'list'], { cwd });
 	const names = new Set<string>();
 	if (res.code !== 0) return names;
 	const lines = res.stdout.split(/\r?\n/);
@@ -44,11 +45,11 @@ export async function addOrUpdateClaudeServer(
 	cwd = process.cwd(),
 ): Promise<{ code: number; stderr: string }> {
 	const payload = JSON.stringify(json);
-	const res = await execCapture('claude', ['mcp', 'add-json', name, payload, '--scope', scope], { cwd });
+	const res = await execCli('claude', ['mcp', 'add-json', name, payload, '--scope', scope], { cwd });
 	return { code: res.code, stderr: res.stderr };
 }
 
 export async function removeClaudeServer(name: string, scope: ClaudeScope, cwd = process.cwd()) {
-	const res = await execCapture('claude', ['mcp', 'remove', name, '--scope', scope], { cwd });
+	const res = await execCli('claude', ['mcp', 'remove', name, '--scope', scope], { cwd });
 	return { code: res.code, stderr: res.stderr };
 }

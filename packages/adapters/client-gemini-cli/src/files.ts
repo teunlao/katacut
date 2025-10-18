@@ -1,45 +1,23 @@
-import { copyFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
+import {
+	extractMcpServers as extractShared,
+	readJsonSafe,
+	removeMcpServerWithBackup,
+} from '@katacut/adapter-clients-shared';
 import type { ReadMcpResult } from '@katacut/core';
-import { readTextFile } from '@katacut/utils';
 import { fromGeminiServerJson } from './map.js';
 
-function isObject(v: unknown): v is Record<string, unknown> {
-	return typeof v === 'object' && v !== null && !Array.isArray(v);
-}
-
 async function readJson(path: string): Promise<unknown | undefined> {
-	try {
-		return JSON.parse(await readTextFile(path));
-	} catch {
-		return undefined;
-	}
+	return readJsonSafe(path);
 }
 
-function extractMcpServers(root: unknown): Record<string, import('@katacut/core').ServerJson> | undefined {
-	if (!isObject(root)) return undefined;
-	const direct = (root as Record<string, unknown>).mcpServers;
-	if (isObject(direct)) {
-		const out: Record<string, import('@katacut/core').ServerJson> = {};
-		for (const [name, val] of Object.entries(direct)) {
-			const sj = fromGeminiServerJson(val);
-			if (sj) out[name] = sj;
-		}
-		return out;
-	}
-	// recursive deep search
-	for (const v of Object.values(root)) {
-		const e = extractMcpServers(v);
-		if (e) return e;
-	}
-	return undefined;
-}
+// Use shared extractor with mapper fromGeminiServerJson
 
 export async function readProjectGemini(cwd = process.cwd()): Promise<ReadMcpResult> {
 	const path = join(cwd, '.gemini', 'settings.json');
 	const parsed = await readJson(path);
-	const servers = extractMcpServers(parsed) ?? {};
+	const servers = extractShared(parsed, fromGeminiServerJson) ?? {};
 	return { source: Object.keys(servers).length > 0 ? path : undefined, mcpServers: servers };
 }
 
@@ -60,7 +38,7 @@ export async function readUserGemini(): Promise<ReadMcpResult> {
 
 	for (const file of [...candidates, ...systemCandidates]) {
 		const parsed = await readJson(file);
-		const servers = extractMcpServers(parsed);
+		const servers = extractShared(parsed, fromGeminiServerJson);
 		if (servers && Object.keys(servers).length > 0) return { source: file, mcpServers: servers };
 	}
 	return { mcpServers: {} };
@@ -73,19 +51,5 @@ export async function fallbackRemoveGemini(
 ): Promise<boolean> {
 	const path =
 		scope === 'project' ? join(cwd, '.gemini', 'settings.json') : join(homedir(), '.gemini', 'settings.json');
-	const parsed = await readJson(path);
-	if (!parsed || !isObject(parsed)) return false;
-	const root = parsed as Record<string, unknown>;
-	const servers = root.mcpServers;
-	if (!servers || !isObject(servers)) return false;
-	if (!(name in servers)) return false;
-	try {
-		await copyFile(path, `${path}.bak`);
-		const obj = servers as Record<string, unknown>;
-		delete obj[name];
-		await writeFile(path, JSON.stringify(root, null, 2), 'utf8');
-		return true;
-	} catch {
-		return false;
-	}
+	return removeMcpServerWithBackup(path, name);
 }

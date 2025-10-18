@@ -1,8 +1,8 @@
-import { execCapture } from '@katacut/utils';
+import { execCli } from '@katacut/adapter-clients-shared';
 import type { GeminiScope } from './types.js';
 
 export async function ensureGeminiAvailable(): Promise<boolean> {
-	const res = await execCapture('gemini', ['--version'], {});
+	const res = await execCli('gemini', ['--version'], {});
 	return res.code === 0;
 }
 
@@ -14,7 +14,7 @@ export async function addOrUpdateGeminiServer(
 ): Promise<{ code: number; stderr: string }> {
 	if (json.type === 'stdio') {
 		const args = ['mcp', 'add', name, json.command, ...(json.args ?? []), '--scope', scope];
-		const res = await execCapture('gemini', args, { cwd });
+		const res = await execCli('gemini', args, { cwd });
 		return { code: res.code, stderr: res.stderr };
 	}
 	const flatHeaders: string[] = [];
@@ -28,16 +28,16 @@ export async function addOrUpdateGeminiServer(
 	}
 	if (json.type === 'http') {
 		const args = ['mcp', 'add', '--transport', 'http', name, json.url, ...flatHeaders, '--scope', scope];
-		const res = await execCapture('gemini', args, { cwd });
+		const res = await execCli('gemini', args, { cwd });
 		return { code: res.code, stderr: res.stderr };
 	}
 	// sse
 	const args = ['mcp', 'add', '--transport', 'sse', name, json.url, ...flatHeaders, '--scope', scope];
-	const res = await execCapture('gemini', args, { cwd });
+	const res = await execCli('gemini', args, { cwd });
 	return { code: res.code, stderr: res.stderr };
 }
 
 export async function removeGeminiServer(name: string, scope: GeminiScope, cwd = process.cwd()) {
-	const res = await execCapture('gemini', ['mcp', 'remove', name, '--scope', scope], { cwd });
+	const res = await execCli('gemini', ['mcp', 'remove', name, '--scope', scope], { cwd });
 	return { code: res.code, stderr: res.stderr };
 }

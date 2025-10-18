@@ -1,6 +1,12 @@
-import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope } from '@katacut/core';
+import { canApplyTransport } from '@katacut/adapter-clients-shared';
+import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from '@katacut/core';
 import { addOrUpdateClaudeServer, ensureClaudeAvailable, removeClaudeServer } from './cli.js';
 import { fallbackRemoveClaude, readProjectMcp, readUserMcp } from './files.js';
+import type { ClaudeServerJson } from './types.js';
+
+function isClaudeServerJson(s: ServerJson): s is ClaudeServerJson {
+	return s.type === 'http' || s.type === 'stdio';
+}
 
 export const claudeCodeAdapter: ClientAdapter = {
 	id: 'claude-code',
@@ -44,8 +50,12 @@ export const claudeCodeAdapter: ClientAdapter = {
 						failed++;
 						continue;
 					}
-					if (json.type === 'sse') {
-						// Claude Code does not support SSE directly; treat as failure for this client
+					const decision = canApplyTransport({ unsupported: ['sse'] }, json);
+					if (decision !== 'ok') {
+						failed++;
+						continue;
+					}
+					if (!isClaudeServerJson(json)) {
 						failed++;
 						continue;
 					}

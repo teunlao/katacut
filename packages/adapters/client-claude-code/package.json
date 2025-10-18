@@ -18,6 +18,7 @@
 	"dependencies": {
 		"@katacut/schema": "workspace:*",
 		"@katacut/utils": "workspace:*",
+		"@katacut/adapter-clients-shared": "workspace:*",
 		"@katacut/core": "workspace:*"
 	}
 }
