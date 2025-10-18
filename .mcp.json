@@ -7,6 +7,21 @@
         "-y",
         "@agent-infra/mcp-server-filesystem"
       ]
+    },
+    "memory-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@letta-ai/memory-mcp@2.0.2"
+      ]
+    },
+    "neverinfamous-memory-journal-mcp": {
+      "type": "http",
+      "url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp",
+      "headers": {
+        "Authorization": "Bearer {smithery_api_key}"
+      }
     }
   }
 }
