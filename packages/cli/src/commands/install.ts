@@ -1,5 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
+import { createInterface } from 'node:readline/promises';
+import process from 'node:process';
 import type { Scope } from '@katacut/core';
 import { buildDesired, buildLock, diffDesiredCurrent, type Lockfile, mergeLock } from '@katacut/core';
 import type { Command } from 'commander';
@@ -38,7 +40,10 @@ export function registerInstallCommand(program: Command) {
 		.option('--client <id>', 'Client id (default: claude-code)')
 		.option('--clients <ids>', 'Comma-separated client ids (overrides --client)')
 		.option('--dry-run', 'print plan without changes', false)
-		.option('--prune', 'remove servers not present in config', false)
+		// Prune by default for npm-like DX; allow opting out with --no-prune.
+		// Keep --prune for backward-compat (has no effect because default is prune=true).
+		.option('--prune', 'remove servers not present in config (default)', true)
+		.option('--no-prune', 'do not remove servers not present in config')
 		.option('--no-write-lock', 'do not write katacut.lock.json after apply')
 		.option('--frozen-lock', 'require existing lock to match config (alias of --frozen-lockfile)', false)
 		.option(
@@ -143,6 +148,18 @@ export function registerInstallCommand(program: Command) {
 						fmtF,
 					);
 					if (!options.dryRun) {
+						// Interactive confirmation for removals when pruning is enabled (default)
+						if (options.prune !== false) {
+							const toRemove = plan.filter((p) => p.action === 'remove').map((p) => p.name);
+							if (toRemove.length > 0 && !(options.yes ?? false)) {
+								const confirmed = await confirmPrune(toRemove, adapter.id, requestedScope);
+								if (!confirmed) {
+									console.error('Refusing to prune without confirmation. Re-run with --yes to proceed.');
+									process.exitCode = 1;
+									return;
+								}
+							}
+						}
 						let skipped = 0;
 						for (const s of plan) if (s.action === 'skip') skipped++;
 						const applyPlan = plan
@@ -314,10 +331,17 @@ export function registerInstallCommand(program: Command) {
 					fmt,
 				);
 
-				if (options.prune && !options.yes) {
-					console.error('Refusing to prune without confirmation. Re-run with --yes to proceed.');
-					process.exitCode = 1;
-					return;
+				// Interactive confirmation for removals when pruning is enabled (default)
+				if (options.prune !== false) {
+					const toRemove = plan.filter((p) => p.action === 'remove').map((p) => p.name);
+					if (toRemove.length > 0 && !(options.yes ?? false)) {
+						const confirmed = await confirmPrune(toRemove, adapter.id, realizedScope);
+						if (!confirmed) {
+							console.error('Refusing to prune without confirmation. Re-run with --yes to proceed.');
+							process.exitCode = 1;
+							return;
+						}
+					}
 				}
 				if (options.local && options.prune) {
 					console.error(
@@ -384,4 +408,19 @@ export function registerInstallCommand(program: Command) {
 				console.log(`Updated lockfile: ${lockPath}`);
 			}
 		});
+}
+
+async function confirmPrune(names: readonly string[], client: string, scope: Scope): Promise<boolean> {
+	const list = names.slice(0, 10).join(', ');
+	const tail = names.length > 10 ? ` and ${names.length - 10} more` : '';
+	const question = `Client '${client}' (${scope}): will remove ${names.length} entr${names.length === 1 ? 'y' : 'ies'}: ${list}${tail}. Proceed? [y/N] `;
+	const canPrompt = Boolean(process.stdin.isTTY && process.stdout.isTTY);
+	if (!canPrompt) return false;
+	const rl = createInterface({ input: process.stdin, output: process.stdout });
+	try {
+		const answer = (await rl.question(question)).trim().toLowerCase();
+		return answer === 'y' || answer === 'yes';
+	} finally {
+		rl.close();
+	}
 }
