@@ -1,8 +1,6 @@
-import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from '@katacut/core';
-import type { KatacutConfig, McpServerConfig } from '@katacut/schema';
+import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope } from '@katacut/core';
 import { addOrUpdateClaudeServer, ensureClaudeAvailable, removeClaudeServer } from './cli.js';
 import { fallbackRemoveClaude, readProjectMcp, readUserMcp } from './files.js';
-import { toClaudeServerJson } from './map.js';
 
 export const claudeCodeAdapter: ClientAdapter = {
 	id: 'claude-code',
@@ -19,13 +17,6 @@ export const claudeCodeAdapter: ClientAdapter = {
 	},
 	async readUser(): Promise<ReadMcpResult> {
 		return readUserMcp();
-	},
-	desiredFromConfig(config: unknown): Record<string, ServerJson> {
-		const out: Record<string, ServerJson> = {};
-		const cfg = config as KatacutConfig;
-		const src: Record<string, McpServerConfig> = (cfg.mcp ?? {}) as Record<string, McpServerConfig>;
-		for (const name of Object.keys(src)) out[name] = toClaudeServerJson(src[name]);
-		return out;
 	},
 	async applyInstall(plan: readonly InstallStep[], scope: Scope, cwd?: string): Promise<ApplyResultSummary> {
 		let added = 0;

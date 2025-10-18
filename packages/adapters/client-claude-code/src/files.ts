@@ -37,11 +37,12 @@ function extractMcpServers(value: unknown): Record<string, ClaudeServerJson> | u
 				const command = typeof vv.command === 'string' ? vv.command : undefined;
 				if (!command) continue;
 				const args = Array.isArray(vv.args) ? (vv.args.filter((a) => typeof a === 'string') as string[]) : undefined;
-				const env = isObject(vv.env)
+				const envObj = isObject(vv.env)
 					? Object.fromEntries(
 							Object.entries(vv.env).filter(([, val]) => typeof val === 'string') as [string, string][],
 						)
 					: undefined;
+				const env = envObj && Object.keys(envObj).length > 0 ? envObj : undefined;
 				out[k] = { type: 'stdio', command, args, env };
 			}
 		}

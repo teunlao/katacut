@@ -76,4 +76,47 @@ describe('kc install --lockfile-only merges with existing entries', () => {
 			await rm(dir, { recursive: true, force: true });
 		}
 	});
+
+	it('writes lock with clients array for multiple clients (--lockfile-only)', async () => {
+		const dir = await mkdtemp(join(tmpdir(), 'kc-lock-only-multi-'));
+		try {
+			const cfg = {
+				version: '0.1.0',
+				clients: ['claude-code', 'gemini-cli'],
+				mcp: { a: { transport: 'http', url: 'https://a' } },
+			} as const;
+			await writeFile(join(dir, 'katacut.config.jsonc'), JSON.stringify(cfg), 'utf8');
+
+			vi.resetModules();
+			vi.doMock('../src/lib/adapters/registry.ts', () => {
+				// Only validate adapters exist; lockfile-only path doesn't call apply
+				const cc = {
+					id: 'claude-code',
+					readProject: async () => ({ mcpServers: {} }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async () => ({ added: 0, updated: 0, removed: 0, failed: 0 }),
+				} as const;
+				const gm = {
+					id: 'gemini-cli',
+					readProject: async () => ({ mcpServers: {} }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async () => ({ added: 0, updated: 0, removed: 0, failed: 0 }),
+				} as const;
+				return { getAdapter: async (id: string) => (id === 'claude-code' ? cc : gm) };
+			});
+
+			const { registerInstallCommand } = await import('../src/commands/install.ts');
+			const program = new Command();
+			registerInstallCommand(program);
+			const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+			await program.parseAsync(['node', 'cli', 'install', '--lockfile-only'], { from: 'node' });
+			cwdSpy.mockRestore();
+
+			const text = await readFile(join(dir, 'katacut.lock.json'), 'utf8');
+			const lock = JSON.parse(text) as { clients?: string[] };
+			expect(lock.clients).toEqual(['claude-code', 'gemini-cli']);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
 });

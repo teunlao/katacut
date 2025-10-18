@@ -52,7 +52,6 @@ export interface ClientAdapter {
 	readonly id: string;
 	readProject(cwd?: string): Promise<ReadMcpResult>;
 	readUser(): Promise<ReadMcpResult>;
-	desiredFromConfig(config: unknown): Record<string, ServerJson>;
 	applyInstall(plan: readonly InstallStep[], scope: Scope, cwd?: string): Promise<ApplyResultSummary>;
 	checkAvailable?(): Promise<boolean>;
 	capabilities?(): Promise<AdapterCapabilities> | AdapterCapabilities;

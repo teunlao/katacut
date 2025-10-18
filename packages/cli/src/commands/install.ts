@@ -1,7 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Scope } from '@katacut/core';
-import { buildLock, diffDesiredCurrent, type Lockfile } from '@katacut/core';
+import { buildDesired, buildLock, diffDesiredCurrent, type Lockfile, mergeLock } from '@katacut/core';
 import type { Command } from 'commander';
 import { getAdapter } from '../lib/adapters/registry.js';
 import { loadAndValidateConfig } from '../lib/config.js';
@@ -73,13 +73,7 @@ export function registerInstallCommand(program: Command) {
 
 			// Lockfile-only: generate/refresh lock strictly from desired state without apply
 			if (options.lockfileOnly) {
-				const tmpDesired = adapters[0].desiredFromConfig(config);
-				const desiredForLock: Record<string, import('@katacut/core').ServerJson> = {};
-				for (const [k, v] of Object.entries(tmpDesired)) {
-					if (v.type === 'http' && v.headers && Object.keys(v.headers).length === 0)
-						desiredForLock[k] = { type: 'http', url: v.url };
-					else desiredForLock[k] = v;
-				}
+				const desiredForLock = buildDesired(config);
 				const expectedLock: Lockfile = buildLock(targetClients, desiredForLock, requestedScope);
 				const lockPath = resolve(process.cwd(), 'katacut.lock.json');
 				if (options.frozenLock || options.frozenLockfile) {
@@ -102,7 +96,6 @@ export function registerInstallCommand(program: Command) {
 				try {
 					const text = await readFile(lockPath, 'utf8');
 					const prev = JSON.parse(text) as Lockfile;
-					const { mergeLock } = await import('@katacut/core');
 					const merged = mergeLock(prev, expectedLock);
 					await writeFile(lockPath, JSON.stringify(merged, null, 2), 'utf8');
 					console.log(`Wrote lockfile: ${lockPath}`);
@@ -116,14 +109,7 @@ export function registerInstallCommand(program: Command) {
 			// Frozen-lockfile: validate lock against desired; if match → apply strictly from lock; never write lock
 			const frozen = Boolean(options.frozenLock || options.frozenLockfile);
 			if (frozen) {
-				const tmpDesired2 = adapters[0].desiredFromConfig(config);
-				const desiredForLock = Object.fromEntries(
-					Object.entries(tmpDesired2).map(([k, v]) =>
-						v.type === 'http' && v.headers && Object.keys(v.headers).length === 0
-							? [k, { type: 'http', url: v.url }]
-							: [k, v],
-					),
-				) as Record<string, import('@katacut/core').ServerJson>;
+				const desiredForLock = buildDesired(config);
 				const expectedLockEarly: Lockfile = buildLock(targetClients, desiredForLock, requestedScope);
 				const lockPathEarly = resolve(cwd, 'katacut.lock.json');
 				let currentLock: Lockfile | undefined;
@@ -143,66 +129,60 @@ export function registerInstallCommand(program: Command) {
 					process.exitCode = 1;
 					return;
 				}
-				// Apply from lock without writing lockfile
+				// Apply from lock without writing lockfile — обойти всех клиентов
 				const desiredFromLock: Record<string, import('@katacut/core').ServerJson> = {};
 				for (const [name, entry] of Object.entries(currentLock.mcpServers)) {
-					if (entry.scope === requestedScope && entry.snapshot) desiredFromLock[name] = entry.snapshot;
+					if (entry.scope === requestedScope && entry.snapshot) {
+						desiredFromLock[name] = entry.snapshot;
+					}
 				}
-				const currentState =
-					requestedScope === 'project' ? await adapters[0].readProject(cwd) : await adapters[0].readUser();
-				const planFromLock = diffDesiredCurrent(desiredFromLock, currentState.mcpServers, Boolean(options.prune), true);
+				let totalFailed = 0;
 				const fmtF = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
-				console.log(JSON.stringify(planFromLock, null, 2));
-				printTableSection(
-					'Plan',
-					['Name', 'Action', 'Scope'],
-					planFromLock.map((p) => [p.name, p.action.toUpperCase(), String(requestedScope)] as const),
-					fmtF,
-				);
-				if (options.dryRun) return;
-				let skippedL = 0;
-				for (const step of planFromLock) if (step.action === 'skip') skippedL++;
-				const applyPlanL = planFromLock
-					.filter((p) => p.action !== 'skip')
-					.map((p) => ({ action: p.action as 'add' | 'update' | 'remove', name: p.name, json: p.json }));
-				if (applyPlanL.length === 0) {
-					if (!fmtF.json && !fmtF.noSummary)
-						console.log(buildSummaryLine({ added: 0, updated: 0, removed: 0, failed: 0 }, skippedL));
+				for (const adapter of adapters) {
+					const current = requestedScope === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
+					const plan = diffDesiredCurrent(desiredFromLock, current.mcpServers, Boolean(options.prune), true);
+					console.log(JSON.stringify(plan, null, 2));
 					printTableSection(
-						'Summary',
-						['Added', 'Updated', 'Removed', 'Skipped', 'Failed'],
-						[['0', '0', '0', String(skippedL), '0']],
+						'Plan',
+						['Name', 'Action', 'Scope', 'Client'],
+						plan.map((p) => [p.name, p.action.toUpperCase(), String(requestedScope), adapter.id]),
 						fmtF,
 					);
-					return;
+					if (!options.dryRun) {
+						let skipped = 0;
+						for (const s of plan) if (s.action === 'skip') skipped++;
+						const applyPlan = plan
+							.filter((p) => p.action !== 'skip')
+							.map((p) => ({ action: p.action as 'add' | 'update' | 'remove', name: p.name, json: p.json }));
+						if (applyPlan.length > 0) {
+							const summary = await adapter.applyInstall(applyPlan, requestedScope, cwd);
+							if (!fmtF.json && !fmtF.noSummary) console.log(buildSummaryLine(summary, skipped));
+							printTableSection(
+								'Summary',
+								['Added', 'Updated', 'Removed', 'Skipped', 'Failed', 'Client'],
+								[
+									[
+										String(summary.added),
+										String(summary.updated),
+										String(summary.removed),
+										String(skipped),
+										String(summary.failed),
+										adapter.id,
+									],
+								],
+								fmtF,
+							);
+							totalFailed += summary.failed;
+						} else {
+							// only counting failures globally; skipped only printed per-client
+						}
+					}
 				}
-				const summaryL = await adapters[0].applyInstall(applyPlanL, requestedScope, cwd);
-				if (!fmtF.json && !fmtF.noSummary) console.log(buildSummaryLine(summaryL, skippedL));
-				printTableSection(
-					'Summary',
-					['Added', 'Updated', 'Removed', 'Skipped', 'Failed'],
-					[
-						[
-							String(summaryL.added),
-							String(summaryL.updated),
-							String(summaryL.removed),
-							String(skippedL),
-							String(summaryL.failed),
-						],
-					],
-					fmtF,
-				);
-				if (summaryL.failed > 0) process.exitCode = 1;
+				if (totalFailed > 0) process.exitCode = 1;
 				return;
 			}
 
-			const desiredTmp = adapters[0].desiredFromConfig(config);
-			const desired: Record<string, import('@katacut/core').ServerJson> = {};
-			for (const [k, v] of Object.entries(desiredTmp)) {
-				if (v.type === 'http' && v.headers && Object.keys(v.headers).length === 0)
-					desired[k] = { type: 'http', url: v.url };
-				else desired[k] = v;
-			}
+			const desired: Record<string, import('@katacut/core').ServerJson> = buildDesired(config);
 
 			// For lock building we use requested scope (common for all clients)
 			const scope: Scope = requestedScope;
@@ -233,57 +213,65 @@ export function registerInstallCommand(program: Command) {
 							desiredFromLock[name] = snap;
 						}
 					}
-					const currentState = scope === 'project' ? await adapters[0].readProject(cwd) : await adapters[0].readUser();
-					const planFromLock = diffDesiredCurrent(
-						desiredFromLock,
-						currentState.mcpServers,
-						Boolean(options.prune),
-						true,
-					);
 					const fmt = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
-					console.log(JSON.stringify(planFromLock, null, 2));
-					printTableSection(
-						'Plan',
-						['Name', 'Action', 'Scope'],
-						planFromLock.map((p) => [p.name, p.action.toUpperCase(), String(scope)] as const),
-						fmt,
-					);
-					if (options.dryRun) return;
-					// If frozen-lockfile was requested, we've already validated; do not apply
-					if (options.frozenLock || options.frozenLockfile) return;
-					let skippedL = 0;
-					for (const s of planFromLock) if (s.action === 'skip') skippedL++;
-					const applyPlanL = planFromLock
-						.filter((p) => p.action !== 'skip')
-						.map((p) => ({ action: p.action as 'add' | 'update' | 'remove', name: p.name, json: p.json }));
-					if (applyPlanL.length === 0) {
-						if (!fmt.json && !fmt.noSummary)
-							console.log(buildSummaryLine({ added: 0, updated: 0, removed: 0, failed: 0 }, skippedL));
+					let totalFailed = 0;
+					for (const adapter of adapters) {
+						const currentState = scope === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
+						const planFromLock = diffDesiredCurrent(
+							desiredFromLock,
+							currentState.mcpServers,
+							Boolean(options.prune),
+							true,
+						);
+						console.log(JSON.stringify(planFromLock, null, 2));
 						printTableSection(
-							'Summary',
-							['Added', 'Updated', 'Removed', 'Skipped', 'Failed'],
-							[['0', '0', '0', String(skippedL), '0']],
+							'Plan',
+							['Name', 'Action', 'Scope', 'Client'],
+							planFromLock.map((p) => [p.name, p.action.toUpperCase(), String(scope), adapter.id] as const),
 							fmt,
 						);
-						return;
-					}
-					const summaryL = await adapters[0].applyInstall(applyPlanL, scope, cwd);
-					if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summaryL, skippedL));
-					printTableSection(
-						'Summary',
-						['Added', 'Updated', 'Removed', 'Skipped', 'Failed'],
-						[
+						if (options.dryRun || options.frozenLock || options.frozenLockfile) {
+							// dry-run: no apply; skipped is only presented in per-client table
+							continue;
+						}
+						let skippedL = 0;
+						for (const s of planFromLock) if (s.action === 'skip') skippedL++;
+						const applyPlanL = planFromLock
+							.filter((p) => p.action !== 'skip')
+							.map((p) => ({ action: p.action as 'add' | 'update' | 'remove', name: p.name, json: p.json }));
+						if (applyPlanL.length === 0) {
+							if (!fmt.json && !fmt.noSummary) {
+								console.log(buildSummaryLine({ added: 0, updated: 0, removed: 0, failed: 0 }, skippedL));
+							}
+							printTableSection(
+								'Summary',
+								['Added', 'Updated', 'Removed', 'Skipped', 'Failed', 'Client'],
+								[['0', '0', '0', String(skippedL), '0', adapter.id]],
+								fmt,
+							);
+							// no global skipped accumulation
+							continue;
+						}
+						const summaryL = await adapter.applyInstall(applyPlanL, scope, cwd);
+						if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summaryL, skippedL));
+						printTableSection(
+							'Summary',
+							['Added', 'Updated', 'Removed', 'Skipped', 'Failed', 'Client'],
 							[
-								String(summaryL.added),
-								String(summaryL.updated),
-								String(summaryL.removed),
-								String(skippedL),
-								String(summaryL.failed),
+								[
+									String(summaryL.added),
+									String(summaryL.updated),
+									String(summaryL.removed),
+									String(skippedL),
+									String(summaryL.failed),
+									adapter.id,
+								],
 							],
-						],
-						fmt,
-					);
-					if (summaryL.failed > 0) process.exitCode = 1;
+							fmt,
+						);
+						totalFailed += summaryL.failed;
+					}
+					if (totalFailed > 0) process.exitCode = 1;
 					return;
 				} catch {
 					console.error('Lockfile is missing or unreadable.');

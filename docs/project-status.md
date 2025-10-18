@@ -1,6 +1,6 @@
 # KataCut — статус проекта (продуктовый обзор)
 
-Обновлено: 18 октября 2025 года
+Обновлено: 18 октября 2025 года (финальный прогон «с нуля»)
 
 ## Идея и ценность
 KataCut — «единая точка правды» для инструментов разработчика с ИИ. Команда хранит нужные инструменты (MCP‑серверы) в одном конфигурационном файле репозитория и одним действием приводит рабочую среду в требуемое состояние на любой машине.
@@ -11,19 +11,19 @@ KataCut — «единая точка правды» для инструмент
 - Предсказуемость: повторное применение ничего лишнего не меняет (идемпотентность).
 - Прозрачность: всегда видно, что подключено в проекте и у пользователя.
 
-## Что уже готово (MVP для Claude Code)
-- Единый конфиг проекта: `katacut.config.jsonc` — перечень требуемых MCP‑инструментов (HTTP/STDIO).
-- Просмотр текущего состояния:
-  - `kc mcp list --client claude-code` — сводка по проектным и пользовательским настройкам.
-  - `--scope project` — показывает содержимое файла проекта.
-  - `--scope user` — показывает пользовательские настройки.
-- Приведение системы к конфигу:
-  - `kc install --client claude-code` — применяет конфигурацию.
-  - `--scope project` — обновляет проектный файл; изменения можно коммитить.
-  - `--scope user` — обновляет пользовательские настройки.
-  - `--dry-run` — сначала показывает план действий (add/update/remove/skip).
-  - `--prune` — удаляет лишнее, не описанное в конфиге.
-- Идемпотентность: повторный `kc install` без изменений даёт только `skip`.
+## Что уже готово (MVP→MVP+)
+- Единый конфиг проекта: `katacut.config.jsonc` — перечень требуемых MCP‑инструментов (HTTP / SSE / STDIO).
+- Белый список клиентов: `clients: ["claude-code", "gemini-cli", …]`.
+- Просмотр текущего состояния: `kc mcp list --client <id> --scope project|user`.
+- Приведение системы к конфигу: `kc install` (по умолчанию обрабатывает список `clients` из конфига; можно сузить `--clients a,b` или одним `--client a`).
+  - `--scope project|user` — область применения.
+  - `--dry-run` — план действий (add/update/remove/skip).
+  - `--prune` — удаляет лишнее.
+  - Идемпотентность: повторный `kc install` без изменений даёт `skip`.
+
+Поддерживаемые клиенты сегодня:
+- Claude Code (`claude-code`).
+- Gemini CLI (`gemini-cli`).
 
 ## Пользовательские сценарии
 - Новый разработчик: клонирует проект и одной командой получает готовую среду в Claude Code.
@@ -31,21 +31,19 @@ KataCut — «единая точка правды» для инструмент
 - Чистка «дрейфа» настроек: `--prune` убирает лишние записи.
 - Безопасное применение: `--dry-run` показывает, что именно будет сделано, перед тем как вносить изменения.
 
-## Новое (диагностика и lockfile/CI)
-- Диагностика окружения:
-  - `kc doctor --client claude-code` — JSON‑отчёт о доступности CLI, правах на project/user файлы, конфликтах и общем статусе (`ok|warn|error`).
-  - Показывает `capabilities` клиента (какие scope поддерживаются) и краткую табличную сводку «Doctor Summary» с рекомендациями.
-  - Учитывает локальный state (см. ниже): при его отсутствии выдаёт предупреждение (warn) с подсказкой прогнать `install`.
-- Lockfile и проверка в CI:
-  - Lockfile проекта: `katacut.lock.json` фиксирует желаемое состояние по конфигу (для выбранного scope).
-  - `kc lock generate` — сформировать lockfile из конфига (без применения).
-  - `kc lock verify` — сверить lockfile с фактическим состоянием; ненулевой код при расхождении (под CI).
-  - `kc ci` — обёртка над `lock verify` с JSON‑отчётом и ненулевым кодом при mismatch (удобно для пайплайнов).
-  - Поведение `kc install` (аналог npm/pnpm):
-    - По умолчанию после успешного применения обновляет `katacut.lock.json`.
-    - `--no-write-lock` — не трогать lock при применении.
-    - `--frozen-lock` — требует существующий lock и точное соответствие.
-    - `--lockfile-only` — обновить/создать lockfile и выйти.
+## Новое (диагностика/lock/CI, мультиклиенты)
+- Диагностика: `kc doctor --client <id>` — JSON‑отчёт (CLI доступность, права на пути project/user, конфликты, capabilities, рекомендации). Есть краткий «Doctor Summary».
+- Lockfile v1: `katacut.lock.json` теперь содержит `clients: string[]` + `mcpServers`.
+  - Нормализация перед snapshot: у HTTP пустые заголовки удаляются (исключает ложные fingerprint‑различия).
+  - Команды:
+    - `kc lock generate --clients a,b` — сформировать lock по конфигу без применения.
+    - `kc lock verify --client a` — сверка lock↔состояние.
+    - `kc ci --client a` — сверка с кодами выхода для CI.
+- Поведение `kc install`:
+  - По умолчанию после успешного применения обновляет lockfile.
+  - `--no-write-lock` — не трогать lock.
+  - `--frozen-lock`/`--frozen-lockfile` — требует точное соответствие lock: при совпадении применяет строго по lock и ничего не пишет.
+  - `--lockfile-only` — генерирует/обновляет lock и выходит.
 
 ## План исследований (lockfile и пакетные менеджеры)
 - Изучение поведения lock у пакетных менеджеров (pnpm/npm/yarn):
@@ -127,7 +125,23 @@ KataCut — «единая точка правды» для инструмент
 - Отображает `localOverrides` (последний локальный прогон с `intent="local"`), чтобы отличать осознанные локальные отступления от проектной истины. Такие отступления не являются ошибкой (статус `ok`), если нет других проблем.
 
 ## Ограничения сейчас
-- Поддерживается один клиент — `claude-code`.
+- SSE в Claude Code не применяется (шаги фиксируются как `failed`), в Gemini CLI — поддерживается через HTTP‑семантику.
+- Enterprise‑файлы читаются только для диагностики (не применяем).
+
+## Поведение очистки (важно)
+- После каждого `remove` мы не полагаемся только на поведение клиента:
+  1) выполняем удаление «официальной» командой клиента;
+  2) перечитываем фактический файл клиента (project/user);
+  3) если ключ ещё присутствует — создаём бэкап (`.bak`) и правим файл детерминированно.
+- Это работает для обоих клиентов (Claude/Gemini) во всех поддерживаемых скоупах.
+
+## Финальный «чистый» прогон с нуля (18.10.2025)
+- Удалены все артефакты (`katacut.config.jsonc`, `katacut.lock.json`, `.katacut/`, `.mcp.json`, `.gemini/settings.json`, `~/.gemini/settings.json`).
+- Свежий конфиг с `clients: ["claude-code","gemini-cli"]` и тремя целями (github/http, fs/stdio, memory‑journal/http).
+- `kc install --scope project` → оба клиента: `ADD` по трём целям; lock записан.
+- `kc lock verify` / `kc ci` → OK у обоих.
+- Внедрили «мусор» в файлы клиентов и выполнили `kc install --prune` → все лишние записи удалены (при необходимости — через fallback с `.bak`).
+- Контрольный `kc ci` / `kc lock verify` / `kc install --from-lock --dry-run` / `kc install --frozen-lockfile` → везде OK (только `SKIP`).
 
 ## Ближайшие шаги
 - Улучшенный отчёт `install/doctor`: компактная таблица изменений и рекомендации.
@@ -137,23 +151,23 @@ KataCut — «единая точка правды» для инструмент
 - Research: enterprise overrides и кроссплатформенный резолвер путей (см. `.tasks/2025-10-18-enterprise-overrides-research.md`).
 
 ## Кроссплатформенные пути (актуализировано)
+### Claude Code
 - Project: `./.mcp.json`.
-- User (порядок поиска):
-  - POSIX: `~/.claude/settings.json`, `~/.claude.json`, `$XDG_CONFIG_HOME/claude/settings.json`, затем `$XDG_CONFIG_HOME/claude/config.json`.
-  - Windows (fallback): `%USERPROFILE%/.claude/settings.json`, `%USERPROFILE%/.claude.json`, при наличии — `%APPDATA%/Claude/settings.json`.
-- Enterprise (перекрытие, планируется детекция в `doctor`):
-  - macOS: `/Library/Application Support/ClaudeCode/managed-settings.json`, `/Library/Application Support/ClaudeCode/managed-mcp.json`.
-  - Linux/WSL: `/etc/claude-code/managed-settings.json`, `/etc/claude-code/managed-mcp.json`.
-  - Windows: `C:\\ProgramData\\ClaudeCode\\managed-settings.json`, `C:\\ProgramData\\ClaudeCode\\managed-mcp.json`.
+- User (поиск): POSIX `~/.claude/settings.json`, `~/.claude.json`, `$XDG_CONFIG_HOME/claude/settings.json`, `$XDG_CONFIG_HOME/claude/config.json`; Windows `%USERPROFILE%/.claude/settings.json`, `%USERPROFILE%/.claude.json`, `%APPDATA%/Claude/settings.json`.
+### Gemini CLI
+- Project: `./.gemini/settings.json`.
+- User: `~/.gemini/settings.json` (Windows: `%USERPROFILE%/.gemini/settings.json`).
+### Enterprise (read‑only; пока только диагностика)
+- Claude Code и Gemini CLI — пути enterprise‑настроек учитываются в doctor (не применяем).
 
 ## Критерии успеха
 - Онбординг в новый проект занимает минуты, а не часы/дни.
 - Одинаковая среда у всей команды без ручных инструкций.
 - Минимум расхождений между конфигом и фактическим состоянием на машинах разработчиков.
 
-## Демо за 2 минуты
-1) Показать `katacut.config.jsonc` — что требуется проекту.
-2) Выполнить `kc mcp list --client claude-code` — «как сейчас».
-3) Выполнить `kc install --client claude-code --dry-run` — план действий.
-4) Выполнить `kc install --client claude-code` — применить.
-5) Повторить `kc install --client claude-code --dry-run` — только `skip`.
+## Демо за 2 минуты (актуальное)
+1) Открыть `katacut.config.jsonc` — три цели и `clients`.
+2) `kc mcp list --client claude-code --scope project` и `kc mcp list --client gemini-cli --scope project`.
+3) `kc install --dry-run` — план по обоим клиентам.
+4) `kc install` — применить и записать lock.
+5) `kc ci --client claude-code` и `kc ci --client gemini-cli` — OK.

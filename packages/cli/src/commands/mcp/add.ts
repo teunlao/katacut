@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Lockfile, Scope } from '@katacut/core';
-import { buildLock, diffDesiredCurrent } from '@katacut/core';
+import { buildDesired, buildLock, diffDesiredCurrent } from '@katacut/core';
 import type { KatacutConfig, McpServerConfig } from '@katacut/schema';
 import type { Command } from 'commander';
 import { getAdapter } from '../../lib/adapters/registry.js';
@@ -89,11 +89,7 @@ export function registerMcpAdd(parent: Command) {
 					const cfgPath = resolve(cwd, 'katacut.config.jsonc');
 					await writeFile(cfgPath, JSON.stringify(edited, null, 2), 'utf8');
 
-					const tmpDesired = adapter.desiredFromConfig(edited);
-					const desired: Record<string, import('@katacut/core').ServerJson> = {};
-					for (const [k, v] of Object.entries(tmpDesired))
-						desired[k] =
-							v.type === 'http' && v.headers && Object.keys(v.headers).length === 0 ? { type: 'http', url: v.url } : v;
+					const desired: Record<string, import('@katacut/core').ServerJson> = buildDesired(edited);
 					const current = scope === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 					console.log(JSON.stringify(plan, null, 2));
@@ -156,14 +152,7 @@ export function registerMcpAdd(parent: Command) {
 					const cfgPath = resolve(cwd, 'katacut.config.jsonc');
 					await writeFile(cfgPath, JSON.stringify(edited, null, 2), 'utf8');
 
-					const tmpDesired2 = adapter.desiredFromConfig(edited);
-					const desired = Object.fromEntries(
-						Object.entries(tmpDesired2).map(([k, v]) =>
-							v.type === 'http' && v.headers && Object.keys(v.headers).length === 0
-								? [k, { type: 'http', url: v.url }]
-								: [k, v],
-						),
-					) as Record<string, import('@katacut/core').ServerJson>;
+					const desired = buildDesired(edited);
 					const current = scope === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 					console.log(JSON.stringify(plan, null, 2));
@@ -229,7 +218,7 @@ export function registerMcpAdd(parent: Command) {
 					await writeFile(cfgPath, JSON.stringify(edited, null, 2), 'utf8');
 
 					// Plan and apply using adapter
-					const desired = adapter.desiredFromConfig(edited);
+					const desired = buildDesired(edited);
 					const current = scope === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 
@@ -314,7 +303,7 @@ export function registerMcpAdd(parent: Command) {
 					const cfgPath = resolve(cwd, 'katacut.config.jsonc');
 					await writeFile(cfgPath, JSON.stringify(edited, null, 2), 'utf8');
 
-					const desired = adapter.desiredFromConfig(edited);
+					const desired = buildDesired(edited);
 					const current = scope === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 					console.log(JSON.stringify(plan, null, 2));

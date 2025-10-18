@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
 import type { Action } from '@katacut/core';
-import { buildLock, diffDesiredCurrent, type Lockfile } from '@katacut/core';
+import { buildDesired, buildLock, diffDesiredCurrent, type Lockfile } from '@katacut/core';
 import type { KatacutConfig } from '@katacut/schema';
 import type { Command } from 'commander';
 import { getAdapter } from '../../lib/adapters/registry.js';
@@ -94,7 +94,7 @@ export function registerMcpRemove(parent: Command) {
 			for (const n of names) delete edited.mcp?.[n];
 			// Compute desired and current for first scope (if both, handle project then user)
 			for (const s of scopes) {
-				const desired = adapter.desiredFromConfig(edited);
+				const desired = buildDesired(edited);
 				const current = s === 'project' ? await adapter.readProject(cwd) : await adapter.readUser();
 				const plan = diffDesiredCurrent(desired, current.mcpServers, true, true);
 				const applyPlan = plan

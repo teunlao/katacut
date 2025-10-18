@@ -1,8 +1,6 @@
-import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from '@katacut/core';
-import type { KatacutConfig, McpServerConfig } from '@katacut/schema';
+import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope } from '@katacut/core';
 import { addOrUpdateGeminiServer, ensureGeminiAvailable, removeGeminiServer } from './cli.js';
 import { fallbackRemoveGemini, readProjectGemini, readUserGemini } from './files.js';
-import { toGeminiServerJson } from './map.js';
 
 export const geminiCliAdapter: ClientAdapter = {
 	id: 'gemini-cli',
@@ -19,22 +17,6 @@ export const geminiCliAdapter: ClientAdapter = {
 	},
 	async readUser(): Promise<ReadMcpResult> {
 		return readUserGemini();
-	},
-	desiredFromConfig(config: unknown): Record<string, ServerJson> {
-		const out: Record<string, ServerJson> = {};
-		const cfg = config as KatacutConfig;
-		const src: Record<string, McpServerConfig> = (cfg.mcp ?? {}) as Record<string, McpServerConfig>;
-		for (const name of Object.keys(src)) {
-			const gj = toGeminiServerJson(src[name]);
-			// normalize gemini json back to our ServerJson
-			if (gj.type === 'stdio') {
-				out[name] = { type: 'stdio', command: gj.command, args: gj.args, env: gj.env };
-			} else {
-				const headers = gj.headers && Object.keys(gj.headers).length === 0 ? undefined : gj.headers;
-				out[name] = { type: 'http', url: gj.httpUrl, headers };
-			}
-		}
-		return out;
 	},
 	async applyInstall(plan: readonly InstallStep[], scope: Scope, cwd?: string): Promise<ApplyResultSummary> {
 		let added = 0;

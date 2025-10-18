@@ -1,9 +1,14 @@
 {
-  "version": "0.1.0",
-  "clients": ["claude-code", "gemini-cli"],
-  "mcp": {
-    "github": { "transport": "http", "url": "https://api.githubcopilot.com/mcp" },
-    "fs": { "transport": "stdio", "command": "npx", "args": ["-y", "@modelcontextprotocol/server-filesystem", "."] },
-    "memory-journal-mcp": { "transport": "http", "url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp" }
-  }
+	"version": "0.1.0",
+	"clients": ["claude-code", "gemini-cli"],
+	"mcp": {
+		"github": { "transport": "http", "url": "https://api.githubcopilot.com/mcp", "headers": {} },
+		"fs": {
+			"transport": "stdio",
+			"command": "npx",
+			"args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+			"env": {}
+		},
+		"memory": { "transport": "http", "url": "https://server.smithery.ai/@modelcontextprotocol/server-memory/mcp" }
+	}
 }

@@ -1,6 +1,7 @@
-import { mkdtemp, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { buildLock } from '@katacut/core';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -147,6 +148,132 @@ describe('kc install lockfile behavior', () => {
 			expect(applied).toBe(0);
 
 			cwdSpy.mockRestore();
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('frozen-lock on multiple clients applies from lock for each client and does not write lock', async () => {
+		const dir = await mkdtemp(join(tmpdir(), 'kc-install-frozen-multi-'));
+		try {
+			const cfg = {
+				version: '0.1.0',
+				clients: ['claude-code', 'gemini-cli'],
+				mcp: { a: { transport: 'http', url: 'https://a' } },
+			} as const;
+			await writeFile(join(dir, 'katacut.config.jsonc'), JSON.stringify(cfg), 'utf8');
+			// Prepare matching lock
+			const desired = { a: { type: 'http' as const, url: 'https://a' } };
+			const lock = buildLock(['claude-code', 'gemini-cli'], desired, 'project');
+			const lockPath = join(dir, 'katacut.lock.json');
+			await writeFile(lockPath, JSON.stringify(lock, null, 2), 'utf8');
+
+			let calledClaude = 0;
+			let calledGemini = 0;
+			vi.resetModules();
+			vi.doMock('../src/lib/adapters/registry.ts', () => {
+				const claude = {
+					id: 'claude-code',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: {} }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async (plan: readonly { action: 'add' | 'update' | 'remove'; name: string }[]) => {
+						calledClaude += plan.length;
+						return { added: plan.length, updated: 0, removed: 0, failed: 0 };
+					},
+				} as const;
+				const gemini = {
+					id: 'gemini-cli',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: {} }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async (plan: readonly { action: 'add' | 'update' | 'remove'; name: string }[]) => {
+						calledGemini += plan.length;
+						return { added: plan.length, updated: 0, removed: 0, failed: 0 };
+					},
+				} as const;
+				return { getAdapter: async (id: string) => (id === 'claude-code' ? claude : gemini) };
+			});
+
+			const { registerInstallCommand } = await import('../src/commands/install.ts');
+			const program = new Command();
+			registerInstallCommand(program);
+			const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+			const before = await stat(lockPath);
+			await program.parseAsync(['node', 'cli', 'install', '--frozen-lockfile'], { from: 'node' });
+			cwdSpy.mockRestore();
+			// Both clients applied from lock
+			expect(calledClaude).toBeGreaterThan(0);
+			expect(calledGemini).toBeGreaterThan(0);
+			// Lock not modified
+			const after = await stat(lockPath);
+			expect(after.mtimeMs).toBe(before.mtimeMs);
+			// Plan printed twice
+			const text = await readFile(lockPath, 'utf8');
+			expect(JSON.parse(text).clients).toEqual(['claude-code', 'gemini-cli']);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('frozen-lock --dry-run on multiple clients prints plans and does not apply', async () => {
+		const dir = await mkdtemp(join(tmpdir(), 'kc-install-frozen-dry-multi-'));
+		try {
+			const cfg = {
+				version: '0.1.0',
+				clients: ['claude-code', 'gemini-cli'],
+				mcp: { a: { transport: 'http', url: 'https://a' } },
+			} as const;
+			await writeFile(join(dir, 'katacut.config.jsonc'), JSON.stringify(cfg), 'utf8');
+			const desired = { a: { type: 'http' as const, url: 'https://a' } };
+			const lock = buildLock(['claude-code', 'gemini-cli'], desired, 'project');
+			const lockPath = join(dir, 'katacut.lock.json');
+			await writeFile(lockPath, JSON.stringify(lock, null, 2), 'utf8');
+
+			let appliedClaude = 0;
+			let appliedGemini = 0;
+			const logs: string[] = [];
+			vi.resetModules();
+			vi.doMock('../src/lib/adapters/registry.ts', () => {
+				const claude = {
+					id: 'claude-code',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: {} }), // so plan has ADD
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async (plan: readonly { action: 'add' | 'update' | 'remove'; name: string }[]) => {
+						appliedClaude += plan.length;
+						return { added: plan.length, updated: 0, removed: 0, failed: 0 };
+					},
+				} as const;
+				const gemini = {
+					id: 'gemini-cli',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: {} }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async (plan: readonly { action: 'add' | 'update' | 'remove'; name: string }[]) => {
+						appliedGemini += plan.length;
+						return { added: plan.length, updated: 0, removed: 0, failed: 0 };
+					},
+				} as const;
+				return { getAdapter: async (id: string) => (id === 'claude-code' ? claude : gemini) };
+			});
+
+			const { registerInstallCommand } = await import('../src/commands/install.ts');
+			const program = new Command();
+			registerInstallCommand(program);
+			const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+			const logSpy = vi.spyOn(console, 'log').mockImplementation((s: unknown) => {
+				if (typeof s === 'string') logs.push(s);
+			});
+			await program.parseAsync(['node', 'cli', 'install', '--frozen-lockfile', '--dry-run'], { from: 'node' });
+			cwdSpy.mockRestore();
+			logSpy.mockRestore();
+			// Nothing applied in dry-run
+			expect(appliedClaude).toBe(0);
+			expect(appliedGemini).toBe(0);
+			// Two plan JSON arrays printed (one per client)
+			const plans = logs.filter((l) => l.trim().startsWith('['));
+			expect(plans.length).toBeGreaterThanOrEqual(2);
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}

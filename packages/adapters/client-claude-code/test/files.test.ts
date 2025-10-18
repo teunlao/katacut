@@ -20,6 +20,12 @@ describe('ClaudeCode file readers', () => {
 			expect(res.source).toBe(join(dir, '.mcp.json'));
 			expect(Object.keys(res.mcpServers).sort()).toEqual(['fs', 'github']);
 			expect(res.mcpServers.github).toEqual({ type: 'http', url: 'https://api.githubcopilot.com/mcp', headers: {} });
+			// env: {} is normalized to undefined
+			expect(res.mcpServers.fs).toEqual({
+				type: 'stdio',
+				command: 'npx',
+				args: ['-y', '@modelcontextprotocol/server-filesystem', '.'],
+			});
 		} finally {
 			await rm(dir, { recursive: true, force: true });
 		}
