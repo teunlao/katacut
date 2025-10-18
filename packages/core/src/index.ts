@@ -24,7 +24,7 @@ export function createSyncPlan(config: KatacutConfig): SyncPlan {
 export type { ResolveConfigPathOptions } from "./config.js";
 export { DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from "./config.js";
 export type { LockEntry, Lockfile } from "./lock/format.js";
-export { buildLock, computeFingerprint, verifyLock } from "./lock/format.js";
+export { buildLock, computeFingerprint, verifyLock, mergeLock } from "./lock/format.js";
 export type { Action, ActionKind } from "./plan/diff.js";
 export { diffByNames, diffDesiredCurrent } from "./plan/diff.js";
 export type {

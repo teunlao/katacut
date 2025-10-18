@@ -37,8 +37,8 @@ export function registerInstallCommand(program: Command) {
 		.option("--dry-run", "print plan without changes", false)
 		.option("--prune", "remove servers not present in config", false)
 		.option("--no-write-lock", "do not write katacut.lock.json after apply")
-		.option("--frozen-lock", "require existing lock to match config and state (alias of --frozen-lockfile)", false)
-		.option("--frozen-lockfile", "require existing lock to match config and state; apply if matches", false)
+		.option("--frozen-lock", "require existing lock to match config (alias of --frozen-lockfile)", false)
+		.option("--frozen-lockfile", "require existing lock to match config; if matches, apply strictly from lock and do not write lockfile", false)
 		.option("--lockfile-only", "generate/update lockfile without applying changes", false)
 		.option("--from-lock", "apply strictly from lockfile (ignore config)", false)
 		.option("-y, --yes", "confirm destructive operations like --prune", false)
@@ -50,37 +50,59 @@ export function registerInstallCommand(program: Command) {
 
 			const clientId = options.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
-
-			// Immediate no-op for frozen-lock flags to satisfy "no apply" semantics in tests
-			if (options.frozenLock || options.frozenLockfile) {
-				return;
-			}
 			const config = await loadAndValidateConfig(options.config);
 			const requestedScope: Scope = options.scope === "user" ? "user" : "project";
 
-			// Lockfile-only: generate lock strictly from requested scope without adapter capability checks
+			// Lockfile-only: generate/refresh lock strictly from desired state without apply
 			if (options.lockfileOnly) {
 				const desiredForLock = adapter.desiredFromConfig(config);
 				const expectedLock: Lockfile = buildLock(adapter.id, desiredForLock, requestedScope);
 				const lockPath = resolve(process.cwd(), "katacut.lock.json");
-				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-				console.log(`Wrote lockfile: ${lockPath}`);
+				if (options.frozenLock || options.frozenLockfile) {
+					try {
+						const text = await readFile(lockPath, "utf8");
+						const currentLock = JSON.parse(text) as Lockfile;
+						const sameClient = currentLock.client === expectedLock.client;
+						const sameEntries = JSON.stringify(currentLock.mcpServers) === JSON.stringify(expectedLock.mcpServers);
+						if (!sameClient || !sameEntries) {
+							console.error("Frozen lock mismatch: lockfile is not up to date with configuration.");
+							process.exitCode = 1;
+						}
+						return; // do not write in frozen mode
+					} catch {
+						console.error("Frozen lock mismatch: lockfile is missing or unreadable.");
+						process.exitCode = 1;
+						return;
+					}
+				}
+				try {
+					const text = await readFile(lockPath, "utf8");
+					const prev = JSON.parse(text) as Lockfile;
+					const { mergeLock } = await import("@katacut/core");
+					const merged = mergeLock(prev, expectedLock);
+					await writeFile(lockPath, JSON.stringify(merged, null, 2), "utf8");
+					console.log(`Wrote lockfile: ${lockPath}`);
+				} catch {
+					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+					console.log(`Wrote lockfile: ${lockPath}`);
+				}
 				return;
 			}
 
-			// Early frozen-lockfile handling (before any adapter availability checks or apply)
+			// Frozen-lockfile: validate lock against desired; if match → apply strictly from lock; never write lock
 			const frozen = Boolean(options.frozenLock || options.frozenLockfile);
 			if (frozen) {
 				const desiredForLock = adapter.desiredFromConfig(config);
 				const expectedLockEarly: Lockfile = buildLock(adapter.id, desiredForLock, requestedScope);
 				const lockPathEarly = resolve(cwd, "katacut.lock.json");
+				let currentLock: Lockfile | undefined;
 				try {
 					const text = await readFile(lockPathEarly, "utf8");
-					const currentLock = JSON.parse(text) as Lockfile;
+					currentLock = JSON.parse(text) as Lockfile;
 					const sameClient = currentLock.client === expectedLockEarly.client;
 					const sameEntries = JSON.stringify(currentLock.mcpServers) === JSON.stringify(expectedLockEarly.mcpServers);
 					if (!sameClient || !sameEntries) {
-						console.error("Frozen lock mismatch: lockfile does not match desired configuration.");
+						console.error("Frozen lock mismatch: lockfile is not up to date with configuration.");
 						process.exitCode = 1;
 						return;
 					}
@@ -89,7 +111,52 @@ export function registerInstallCommand(program: Command) {
 					process.exitCode = 1;
 					return;
 				}
-				// In current mode, frozen-lock validates and exits (no apply)
+				// Apply from lock without writing lockfile
+				const desiredFromLock: Record<string, import("@katacut/core").ServerJson> = {};
+				for (const [name, entry] of Object.entries(currentLock.mcpServers)) {
+					if (entry.scope === requestedScope && entry.snapshot) desiredFromLock[name] = entry.snapshot;
+				}
+				const currentState = requestedScope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
+				const planFromLock = diffDesiredCurrent(
+					desiredFromLock,
+					currentState.mcpServers,
+					Boolean(options.prune),
+					true,
+				);
+				const fmtF = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
+				console.log(JSON.stringify(planFromLock, null, 2));
+				printTableSection(
+					"Plan",
+					["Name", "Action", "Scope"],
+					planFromLock.map((p) => [p.name, p.action.toUpperCase(), String(requestedScope)] as const),
+					fmtF,
+				);
+				if (options.dryRun) return;
+				let skippedL = 0;
+				for (const s of planFromLock) if (s.action === "skip") skippedL++;
+				const applyPlanL = planFromLock
+					.filter((p) => p.action !== "skip")
+					.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
+				if (applyPlanL.length === 0) {
+					if (!fmtF.json && !fmtF.noSummary) console.log(buildSummaryLine({ added: 0, updated: 0, removed: 0, failed: 0 }, skippedL));
+					printTableSection(
+						"Summary",
+						["Added", "Updated", "Removed", "Skipped", "Failed"],
+						[["0", "0", "0", String(skippedL), "0"]],
+						fmtF,
+					);
+					return;
+				}
+				const summaryL = await adapter.applyInstall(applyPlanL, requestedScope, cwd);
+				if (!fmtF.json && !fmtF.noSummary) console.log(buildSummaryLine(summaryL, skippedL));
+				printTableSection(
+					"Summary",
+					["Added", "Updated", "Removed", "Skipped", "Failed"],
+					[[String(summaryL.added), String(summaryL.updated), String(summaryL.removed), String(skippedL), String(summaryL.failed)]],
+					fmtF,
+				);
+				if (summaryL.failed > 0) process.exitCode = 1;
+				return;
 			}
 
 			if (!(await adapter.checkAvailable?.())) {
@@ -164,6 +231,16 @@ export function registerInstallCommand(program: Command) {
 					const applyPlanL = planFromLock
 						.filter((p) => p.action !== "skip")
 						.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
+					if (applyPlanL.length === 0) {
+						if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine({ added: 0, updated: 0, removed: 0, failed: 0 }, skippedL));
+						printTableSection(
+							"Summary",
+							["Added", "Updated", "Removed", "Skipped", "Failed"],
+							[["0", "0", "0", String(skippedL), "0"]],
+							fmt,
+						);
+						return;
+					}
 					const summaryL = await adapter.applyInstall(applyPlanL, scope, cwd);
 					if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summaryL, skippedL));
 					printTableSection(
@@ -261,8 +338,17 @@ export function registerInstallCommand(program: Command) {
 
 			// Write lock by default (unless suppressed) after successful apply (skip when --local)
 			if (!options.local && options.writeLock !== false) {
-				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-				console.log(`Updated lockfile: ${lockPath}`);
+				try {
+					const prevText = await readFile(lockPath, "utf8");
+					const prev = JSON.parse(prevText) as Lockfile;
+					const { mergeLock } = await import("@katacut/core");
+					const merged = mergeLock(prev, expectedLock);
+					await writeFile(lockPath, JSON.stringify(merged, null, 2), "utf8");
+					console.log(`Updated lockfile: ${lockPath}`);
+				} catch {
+					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+					console.log(`Updated lockfile: ${lockPath}`);
+				}
 			}
 		});
 }

@@ -77,3 +77,25 @@ export function verifyLock(lock: Lockfile, project: ReadMcpResult, user: ReadMcp
 	}
 	return { client: lock.client, status: mismatches.length === 0 ? "ok" : "mismatch", mismatches };
 }
+
+/**
+ * Merge two lockfiles for the same client.
+ * - Preserves entries from the previous lock that are not present in the next one (do not drop unrelated targets).
+ * - Updates/overwrites entries present in `next`.
+ * - Keeps previous `resolvedVersion` when `next` does not provide one for an unchanged entry.
+ * - If clients differ, returns `next` as a full replacement (v1 is single‑client).
+ */
+export function mergeLock(prev: Lockfile | undefined, next: Lockfile): Lockfile {
+    if (!prev || prev.client !== next.client) return next;
+    const merged: Lockfile = { version: "1", client: prev.client, mcpServers: { ...prev.mcpServers } };
+    for (const [name, entryNext] of Object.entries(next.mcpServers)) {
+        const entryPrev = prev.mcpServers[name];
+        if (!entryPrev) {
+            merged.mcpServers[name] = entryNext;
+            continue;
+        }
+        const resolvedVersion = entryNext.resolvedVersion ?? entryPrev.resolvedVersion;
+        merged.mcpServers[name] = { ...entryPrev, ...entryNext, resolvedVersion };
+    }
+    return merged;
+}

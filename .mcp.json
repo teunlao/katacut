@@ -13,7 +13,7 @@
       "command": "npx",
       "args": [
         "-y",
-        "@letta-ai/memory-mcp@2.0.2"
+        "@letta-ai/memory-mcp@9.9.9"
       ]
     },
     "neverinfamous-memory-journal-mcp": {

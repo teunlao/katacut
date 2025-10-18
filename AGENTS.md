@@ -29,10 +29,19 @@
 - If a git command runs by mistake or without permission, report immediately and align on a fix.
 
 ### External Sources
-- The `external/` directory stores third-party repositories and resources used as reference material.
+- The `external/` directory stores third‑party repositories and resources used strictly as reference material.
 - `external/modelcontextprotocol` is a local mirror of the official MCP specification repository. Use it for facts about transport modes, methods, and wording.
-- Treat content in `external/` as read-only: do not edit without explicit permission from the user.
-- Before citing external information, cross-check with the mirror; perform network requests only when explicitly instructed.
+- Treat content in `external/` as read‑only: do not edit or reformat files inside `external/` without explicit permission from the user.
+- Before citing external information, cross‑check with the mirror; perform network requests only when explicitly instructed.
+
+#### external/ repository policy
+- Git policy: `external/` is git‑ignored (see `.gitignore`). Do not commit cloned sources, submodules, or generated files under `external/`.
+- Purpose: keep local mirrors (e.g., `external/pnpm`, `external/modelcontextprotocol`) for study and comparison — not for redistribution or runtime use.
+- Safety: never import code from `external/` into production packages or tests; do not execute scripts from `external/` unless explicitly requested.
+- Network: cloning/updating mirrors is allowed only after the user explicitly asks to do it (no unattended network operations).
+- Read‑only workflow: use `external/` to read docs/code, take notes elsewhere in the repo (docs/tasks), and reference exact commit hashes when relevant.
+- Licensing: respect upstream licenses. Keep mirrors local and unmodified; if excerpts are needed in our docs, summarize and attribute.
+- Reproducibility: when analyzing behavior (e.g., lockfile semantics), record upstream repo URL and commit hash in your notes or task card.
 
 ### Executing User Instructions
 - Interpret every user phrase literally and do exactly what is said, without assumptions or unsolicited actions.
