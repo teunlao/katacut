@@ -7,3 +7,8 @@ export function printTableSection(title: string, headers: readonly string[], row
   renderTable(headers, rows);
 }
 
+export interface SummaryCounts { readonly added: number; readonly updated: number; readonly removed: number; readonly failed: number }
+
+export function buildSummaryLine(summary: SummaryCounts, skipped: number): string {
+  return `Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`;
+}

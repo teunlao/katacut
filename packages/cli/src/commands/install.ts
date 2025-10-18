@@ -6,7 +6,7 @@ import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../lib/config.js";
 import { resolveFormatFlags } from "../lib/format.js";
-import { printTableSection } from "../lib/print.js";
+import { printTableSection, buildSummaryLine } from "../lib/print.js";
 import { appendProjectStateRun, buildStateEntries } from "../lib/state.js";
 
 export interface InstallOptions {
@@ -138,11 +138,7 @@ export function registerInstallCommand(program: Command) {
 				.filter((p) => p.action !== "skip")
 				.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
 			const summary = await adapter.applyInstall(applyPlan, scope, cwd);
-			if (!fmt.json && !fmt.noSummary) {
-				console.log(
-					`Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
-				);
-			}
+            if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summary, skipped));
 			printTableSection(
 				"Summary",
 				["Added", "Updated", "Removed", "Skipped", "Failed"],
