@@ -51,6 +51,111 @@ describe('kc install lockfile behavior', () => {
 		}
 	});
 
+	it('writes clean snapshot (no merge) after apply', async () => {
+		const dir = await mkdtemp(join(tmpdir(), 'kc-install-lock-clean-'));
+		try {
+			const cfg = { version: '0.1.0', mcp: { a: { transport: 'http', url: 'https://a' } } } as const;
+			await writeFile(join(dir, 'katacut.config.jsonc'), JSON.stringify(cfg), 'utf8');
+			await writeFile(
+				join(dir, '.mcp.json'),
+				JSON.stringify({ mcpServers: { a: { type: 'http', url: 'https://a' } } }),
+				'utf8',
+			);
+			// Prepare existing lock with unrelated entry 'x'
+			const existing = {
+				version: '1',
+				clients: ['claude-code'],
+				mcpServers: { x: { scope: 'project', fingerprint: 'fp-x', resolvedVersion: '9.9.9' } },
+			};
+			await writeFile(join(dir, 'katacut.lock.json'), JSON.stringify(existing, null, 2), 'utf8');
+
+			vi.resetModules();
+			vi.doMock('../src/lib/adapters/registry.ts', () => {
+				const adapter = {
+					id: 'claude-code',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: { a: { type: 'http', url: 'https://a' } } }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async () => ({ added: 0, updated: 0, removed: 0, failed: 0 }),
+				} as const;
+				return { getAdapter: async () => adapter };
+			});
+
+			const { registerInstallCommand } = await import('../src/commands/install.ts');
+			const program = new Command();
+			registerInstallCommand(program);
+			const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+			await program.parseAsync(
+				['node', 'cli', 'install', '--client', 'claude-code', '--scope', 'project', '-c', 'katacut.config.jsonc'],
+				{ from: 'node' },
+			);
+			cwdSpy.mockRestore();
+
+			const text = await readFile(join(dir, 'katacut.lock.json'), 'utf8');
+			const parsed = JSON.parse(text) as { mcpServers: Record<string, unknown> };
+			expect(Object.keys(parsed.mcpServers)).toEqual(['a']);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('writes clean snapshot for multiple clients after apply', async () => {
+		const dir = await mkdtemp(join(tmpdir(), 'kc-install-lock-clean-multi-'));
+		try {
+			const cfg = {
+				version: '0.1.0',
+				clients: ['claude-code', 'gemini-cli'],
+				mcp: { a: { transport: 'http', url: 'https://a' } },
+			} as const;
+			await writeFile(join(dir, 'katacut.config.jsonc'), JSON.stringify(cfg), 'utf8');
+			await writeFile(
+				join(dir, '.mcp.json'),
+				JSON.stringify({ mcpServers: { a: { type: 'http', url: 'https://a' } } }),
+				'utf8',
+			);
+			// Existing lock has unrelated entry and wrong clients
+			const existing = {
+				version: '1',
+				clients: ['some-other'],
+				mcpServers: { x: { scope: 'project', fingerprint: 'fp-x', resolvedVersion: '0.0.1' } },
+			};
+			await writeFile(join(dir, 'katacut.lock.json'), JSON.stringify(existing, null, 2), 'utf8');
+
+			vi.resetModules();
+			vi.doMock('../src/lib/adapters/registry.ts', () => {
+				const claude = {
+					id: 'claude-code',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: { a: { type: 'http', url: 'https://a' } } }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async () => ({ added: 0, updated: 0, removed: 0, failed: 0 }),
+				} as const;
+				const gemini = {
+					id: 'gemini-cli',
+					checkAvailable: async () => true,
+					readProject: async () => ({ mcpServers: { a: { type: 'http', url: 'https://a' } } }),
+					readUser: async () => ({ mcpServers: {} }),
+					applyInstall: async () => ({ added: 0, updated: 0, removed: 0, failed: 0 }),
+				} as const;
+				return { getAdapter: async (id: string) => (id === 'claude-code' ? claude : gemini) };
+			});
+
+			const { registerInstallCommand } = await import('../src/commands/install.ts');
+			const program = new Command();
+			registerInstallCommand(program);
+			const cwdSpy = vi.spyOn(process, 'cwd').mockReturnValue(dir);
+			await program.parseAsync(['node', 'cli', 'install'], { from: 'node' });
+			cwdSpy.mockRestore();
+
+			const text = await readFile(join(dir, 'katacut.lock.json'), 'utf8');
+			const parsed = JSON.parse(text) as { clients?: string[]; mcpServers: Record<string, unknown> };
+			expect(parsed.clients).toEqual(['claude-code', 'gemini-cli']);
+			expect(Object.keys(parsed.mcpServers)).toEqual(['a']);
+		} finally {
+			await rm(dir, { recursive: true, force: true });
+		}
+	});
+
 	it('respects --no-write-lock and --lockfile-only / --frozen-lock', async () => {
 		const dir = await mkdtemp(join(tmpdir(), 'kc-install-lock-2-'));
 		try {

@@ -31,6 +31,7 @@ export interface InstallOptions {
 export function registerInstallCommand(program: Command) {
 	program
 		.command('install')
+		.alias('i')
 		.description('Install (apply) configuration to target client via MCP')
 		.option('-c, --config <path>', 'path to configuration file', undefined)
 		.option('--scope <scope>', 'Scope: user|project (default: project)')
@@ -93,16 +94,9 @@ export function registerInstallCommand(program: Command) {
 						return;
 					}
 				}
-				try {
-					const text = await readFile(lockPath, 'utf8');
-					const prev = JSON.parse(text) as Lockfile;
-					const merged = mergeLock(prev, expectedLock);
-					await writeFile(lockPath, JSON.stringify(merged, null, 2), 'utf8');
-					console.log(`Wrote lockfile: ${lockPath}`);
-				} catch {
-					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), 'utf8');
-					console.log(`Wrote lockfile: ${lockPath}`);
-				}
+				// pnpm-like behavior: write a clean snapshot (no merge)
+				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), 'utf8');
+				console.log(`Wrote lockfile: ${lockPath}`);
 				return;
 			}
 
@@ -385,17 +379,9 @@ export function registerInstallCommand(program: Command) {
 
 			// Write lock by default (unless suppressed) after successful apply (skip when --local or --dry-run)
 			if (!options.local && options.writeLock !== false && totalFailed === 0 && !options.dryRun) {
-				try {
-					const prevText = await readFile(lockPath, 'utf8');
-					const prev = JSON.parse(prevText) as Lockfile;
-					const { mergeLock } = await import('@katacut/core');
-					const merged = mergeLock(prev, expectedLock);
-					await writeFile(lockPath, JSON.stringify(merged, null, 2), 'utf8');
-					console.log(`Updated lockfile: ${lockPath}`);
-				} catch {
-					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), 'utf8');
-					console.log(`Updated lockfile: ${lockPath}`);
-				}
+				// pnpm-like behavior: write a clean snapshot (no merge)
+				await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), 'utf8');
+				console.log(`Updated lockfile: ${lockPath}`);
 			}
 		});
 }

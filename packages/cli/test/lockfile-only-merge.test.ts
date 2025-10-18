@@ -4,12 +4,12 @@ import { join } from 'node:path';
 import { Command } from 'commander';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-describe('kc install --lockfile-only merges with existing entries', () => {
+describe('kc install --lockfile-only writes a clean snapshot (no merge)', () => {
 	const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 	beforeEach(() => logSpy.mockClear());
 	afterEach(() => logSpy.mockClear());
 
-	it('preserves unrelated entries and their resolvedVersion', async () => {
+    it('replaces existing lock with exact desired entries', async () => {
 		const dir = await mkdtemp(join(tmpdir(), 'kc-lock-merge-'));
 		try {
 			const cfg = { version: '0.1.0', mcp: { a: { transport: 'http', url: 'https://a' } } } as const;
@@ -68,9 +68,9 @@ describe('kc install --lockfile-only merges with existing entries', () => {
 			const after = await stat(lockPath);
 			expect(after.mtimeMs).toBeGreaterThanOrEqual(before.mtimeMs);
 			const text = await readFile(lockPath, 'utf8');
-			const parsed = JSON.parse(text) as { mcpServers: Record<string, unknown> };
-			expect(Object.keys(parsed.mcpServers).sort()).toEqual(['a', 'x']);
-			expect((parsed.mcpServers as Record<string, { resolvedVersion?: string }>).x.resolvedVersion).toBe('1.2.3');
+            const parsed = JSON.parse(text) as { mcpServers: Record<string, unknown> };
+            // pnpm-like: no merge, only desired entries remain
+            expect(Object.keys(parsed.mcpServers).sort()).toEqual(['a']);
 			cwdSpy.mockRestore();
 		} finally {
 			await rm(dir, { recursive: true, force: true });
