@@ -20,9 +20,7 @@ export function registerInitCommand(program: Command) {
 					await writeFile(targetPath, TEMPLATE, { flag: "wx" });
 				} catch (error) {
 					if ((error as NodeJS.ErrnoException).code === "EEXIST") {
-						throw new Error(
-							"katacut.config.jsonc already exists (use --force to overwrite)",
-						);
+						throw new Error("katacut.config.jsonc already exists (use --force to overwrite)");
 					}
 					throw error;
 				}

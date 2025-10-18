@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { Command } from "commander";
-import { registerInitCommand } from "./commands/init.js";
-import { registerSyncCommand } from "./commands/sync.js";
-import { registerInstallCommand } from "./commands/install.js";
-import { registerMcpCommand } from "./commands/mcp/index.js";
-import { registerDoctorCommand } from "./commands/doctor.js";
-import { registerLockCommand } from "./commands/lock.js";
 import { registerCiCommand } from "./commands/ci.js";
+import { registerDoctorCommand } from "./commands/doctor.js";
+import { registerInitCommand } from "./commands/init.js";
+import { registerInstallCommand } from "./commands/install.js";
+import { registerLockCommand } from "./commands/lock.js";
+import { registerMcpCommand } from "./commands/mcp/index.js";
+import { registerSyncCommand } from "./commands/sync.js";
 
 const program = new Command();
 

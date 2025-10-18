@@ -5,8 +5,7 @@ import { describe, expect, it } from "vitest";
 
 import { parseConfig } from "../src/index.js";
 
-const fixture = (name: string) =>
-	readFile(resolve(__dirname, "__fixtures__", name), "utf8");
+const fixture = (name: string) => readFile(resolve(__dirname, "__fixtures__", name), "utf8");
 
 describe("parseConfig", () => {
 	it("parses valid configuration", async () => {
@@ -16,8 +15,8 @@ describe("parseConfig", () => {
 		expect(result.config).toMatchObject({
 			version: "0.1.0",
 			mcp: {
-				github: { transport: "http", url: "https://api.example.com/mcp" }
-			}
+				github: { transport: "http", url: "https://api.example.com/mcp" },
+			},
 		});
 	});
 
@@ -28,7 +27,7 @@ describe("parseConfig", () => {
 		expect(result.config?.mcp?.["local-server"]).toMatchObject({
 			transport: "stdio",
 			command: "npx",
-			args: ["-y", "example-server"]
+			args: ["-y", "example-server"],
 		});
 	});
 

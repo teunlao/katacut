@@ -1,17 +1,14 @@
 {
-  "extends": "./tsconfig.json",
-  "compilerOptions": {
-    "noEmit": false,
-    "declaration": true,
-    "declarationMap": true,
-    "emitDeclarationOnly": false,
-    "sourceMap": true,
-    "outDir": "dist",
-    "tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
-  },
-  "include": ["src/**/*"],
-  "references": [
-    { "path": "../schema/tsconfig.build.json" },
-    { "path": "../utils/tsconfig.build.json" }
-  ]
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"noEmit": false,
+		"declaration": true,
+		"declarationMap": true,
+		"emitDeclarationOnly": false,
+		"sourceMap": true,
+		"outDir": "dist",
+		"tsBuildInfoFile": "dist/tsconfig.build.tsbuildinfo"
+	},
+	"include": ["src/**/*"],
+	"references": [{ "path": "../schema/tsconfig.build.json" }, { "path": "../utils/tsconfig.build.json" }]
 }

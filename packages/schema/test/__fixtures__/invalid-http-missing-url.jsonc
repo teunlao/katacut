@@ -1,7 +1,7 @@
 {
-  "mcp": {
-    "example": {
-      "transport": "http"
-    }
-  }
+	"mcp": {
+		"example": {
+			"transport": "http"
+		}
+	}
 }

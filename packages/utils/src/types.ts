@@ -1,4 +1,4 @@
 export interface ReadTextFileOptions {
-  cwd?: string;
-  encoding?: BufferEncoding;
+	cwd?: string;
+	encoding?: BufferEncoding;
 }

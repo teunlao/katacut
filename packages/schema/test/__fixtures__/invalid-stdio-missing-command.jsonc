@@ -1,7 +1,7 @@
 {
-  "mcp": {
-    "local": {
-      "transport": "stdio"
-    }
-  }
+	"mcp": {
+		"local": {
+			"transport": "stdio"
+		}
+	}
 }

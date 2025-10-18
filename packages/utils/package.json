@@ -1,17 +1,19 @@
 {
-  "name": "@katacut/utils",
-  "version": "0.0.0",
-  "private": true,
-  "type": "module",
-  "exports": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "files": ["dist"],
-  "scripts": {
-    "build": "tsc --build tsconfig.build.json",
-    "lint": "biome lint .",
-    "test": "vitest run --project utils --passWithNoTests",
-    "test:watch": "vitest --project utils --passWithNoTests",
-    "typecheck": "tsc --project tsconfig.json --noEmit",
-    "dev": "tsc --build tsconfig.build.json --watch"
-  }
+	"name": "@katacut/utils",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist"
+	],
+	"scripts": {
+		"build": "tsc --build tsconfig.build.json",
+		"lint": "biome lint .",
+		"test": "vitest run --project utils --passWithNoTests",
+		"test:watch": "vitest --project utils --passWithNoTests",
+		"typecheck": "tsc --project tsconfig.json --noEmit",
+		"dev": "tsc --build tsconfig.build.json --watch"
+	}
 }
