@@ -17,7 +17,9 @@ export interface InstallOptions {
 	readonly writeLock?: boolean;
 	readonly frozenLock?: boolean;
 	readonly lockfileOnly?: boolean;
-	readonly yes?: boolean;
+  readonly yes?: boolean;
+  readonly json?: boolean;
+  readonly noSummary?: boolean;
 }
 
 export function registerInstallCommand(program: Command) {
@@ -32,7 +34,9 @@ export function registerInstallCommand(program: Command) {
 		.option("--no-write-lock", "do not write katacut.lock.json after apply")
 		.option("--frozen-lock", "require existing lock to match config and state; make no changes", false)
 		.option("--lockfile-only", "generate/update lockfile without applying changes", false)
-		.option("-y, --yes", "confirm destructive operations like --prune", false)
+    .option("-y, --yes", "confirm destructive operations like --prune", false)
+    .option("--json", "machine-readable output: only JSON plan (no tables, no labels)", false)
+    .option("--no-summary", "suppress human tables and labels; keep JSON only where applicable", false)
 		.action(async (options: InstallOptions) => {
 			const cwd = process.cwd();
 
@@ -97,10 +101,10 @@ export function registerInstallCommand(program: Command) {
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);
 
-			// Print plan always (JSON + compact table)
-			console.log("Plan:");
-			console.log(JSON.stringify(plan, null, 2));
-			printPlanTable(plan, scope);
+      // Print plan
+      if (!options.json && !options.noSummary) console.log("Plan:");
+      console.log(JSON.stringify(plan, null, 2));
+      if (!options.json && !options.noSummary) printPlanTable(plan, scope);
 
 			// Safety: require --yes for --prune to avoid accidental removals
 			if (options.prune && !options.yes) {
@@ -116,11 +120,13 @@ export function registerInstallCommand(program: Command) {
 			const applyPlan = plan
 				.filter((p) => p.action !== "skip")
 				.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
-			const summary = await adapter.applyInstall(applyPlan, scope, cwd);
-			console.log(
-				`Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
-			);
-			printSummaryTable(summary, skipped);
+      const summary = await adapter.applyInstall(applyPlan, scope, cwd);
+      if (!options.json && !options.noSummary) {
+        console.log(
+          `Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
+        );
+        printSummaryTable(summary, skipped);
+      }
 			if (summary.failed > 0) {
 				process.exitCode = 1;
 				return;
