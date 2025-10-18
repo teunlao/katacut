@@ -1,4 +1,5 @@
 import type { McpServerConfig } from "@katacut/schema";
+import { REGISTRY_DEFAULT_BASE, REGISTRY_HOST } from "../constants.js";
 import type { ResolvedServer } from "./types.js";
 
 type RegistryRemote = {
@@ -22,8 +23,19 @@ type RegistryServer = {
 type RegistryResponse = { readonly server?: RegistryServer };
 
 export function isRegistryVersionUrl(u: URL): boolean {
-	if (u.hostname !== "registry.modelcontextprotocol.io") return false;
+	if (u.hostname !== REGISTRY_HOST) return false;
 	return /^\/v0(\.1)?\/servers\/.+\/versions\/(latest|[A-Za-z0-9_.-]+)$/.test(u.pathname);
+}
+
+export function buildRegistryVersionUrl(
+  name: string,
+  version: string | undefined,
+  base?: string,
+): URL {
+  const ver = (version && version.length > 0) ? version : "latest";
+  const path = `/v0.1/servers/${encodeURIComponent(name)}/versions/${encodeURIComponent(ver)}`;
+  const origin = base ?? REGISTRY_DEFAULT_BASE;
+  return new URL(path, origin);
 }
 
 function pickHttpFromRemotes(remotes: ReadonlyArray<RegistryRemote>) {
@@ -82,4 +94,28 @@ export async function resolveFromRegistry(u: URL): Promise<ResolvedServer> {
 		return { name, config: cfg };
 	}
 	throw new Error("No usable transport (http/stdio) found in registry entry");
+}
+
+export async function resolveCanonicalNameByShort(
+  shortName: string,
+  base?: string,
+): Promise<string> {
+  const origin = base ?? REGISTRY_DEFAULT_BASE;
+  const url = new URL(`/v0.1/servers?search=${encodeURIComponent(shortName)}`, origin);
+  const res = await fetch(url, { headers: { Accept: "application/json, application/problem+json" }, redirect: "follow" });
+  if (!res.ok) throw new Error(`Registry search failed: ${res.status}`);
+  const data = (await res.json()) as unknown;
+  if (!data || typeof data !== "object" || !("servers" in (data as Record<string, unknown>))) {
+    throw new Error("Invalid registry search response");
+  }
+  const arr = (data as { servers?: ReadonlyArray<{ server?: { name?: string } }> }).servers ?? [];
+  const names = arr
+    .map((e) => e?.server?.name)
+    .filter((n): n is string => typeof n === "string" && n.length > 0);
+  const matches = Array.from(new Set(names.filter((n) => n.endsWith(`/${shortName}`))));
+  if (matches.length === 1) return matches[0];
+  if (matches.length === 0) throw new Error(`No registry entries found for short name '${shortName}'`);
+  throw new Error(
+    `Ambiguous short name '${shortName}'; candidates: ${matches.join(", ")}. Please specify full 'namespace/name'.`,
+  );
 }

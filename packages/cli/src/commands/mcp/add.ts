@@ -7,12 +7,12 @@ import type { Command } from "commander";
 import { getAdapter } from "../../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../../lib/config.js";
 import { resolveFormatFlags } from "../../lib/format.js";
-import { isServerJson } from "../../lib/guards.js";
 import { buildSummaryLine, printTableSection } from "../../lib/print.js";
-import { appendProjectStateRun, buildStateEntries } from "../../lib/state.js";
-import { isRegistryVersionUrl, resolveFromRegistry } from "../../lib/resolvers/registry.js";
-import { isSmitheryServerUrl } from "../../lib/resolvers/smithery.js";
 import { resolveJsonDescriptor } from "../../lib/resolvers/json-url.js";
+import { buildRegistryVersionUrl, isRegistryVersionUrl, resolveCanonicalNameByShort, resolveFromRegistry } from "../../lib/resolvers/registry.js";
+import { REGISTRY_DEFAULT_BASE } from "../../lib/constants.js";
+import { isSmitheryServerUrl } from "../../lib/resolvers/smithery.js";
+import { appendProjectStateRun, buildStateEntries } from "../../lib/state.js";
 
 function isHttpUrl(ref: string): URL | undefined {
 	try {
@@ -69,46 +69,18 @@ export function registerMcpAdd(parent: Command) {
 				const scope: Scope = opts.scope === "user" ? "user" : "project";
 				const fmt = resolveFormatFlags(process.argv, { json: opts.json, noSummary: opts.noSummary });
 
-					// Resolve descriptor
-					const asUrl = isHttpUrl(ref);
-      let name: string;
+				// Resolve descriptor
+				const asUrl = isHttpUrl(ref);
+				let name: string;
 
-      // 1) Smithery URL (streamable HTTP endpoint)
-      if (asUrl && isSmitheryServerUrl(asUrl)) {
-        const rsSmith = (await (async () => ({ name: asUrl.pathname.split('/').filter(Boolean).slice(-2, -1)[0]?.replace(/^@/, '') ?? 'server', config: { transport: 'http' as const, url: asUrl.toString() } }))());
-        name = rsSmith.name;
-        const cfgEntry: McpServerConfig = rsSmith.config;
-
-        const config = await loadAndValidateConfig(undefined);
-        const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
-        if (!edited.mcp) edited.mcp = {};
-        edited.mcp[name] = cfgEntry;
-        const cfgPath = resolve(cwd, "katacut.config.jsonc");
-        await writeFile(cfgPath, JSON.stringify(edited, null, 2), "utf8");
-
-        const desired = adapter.desiredFromConfig(edited);
-        const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
-        const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
-        console.log(JSON.stringify(plan, null, 2));
-        printTableSection("Plan", ["Name", "Action", "Scope"], plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]), fmt);
-        if (opts.dryRun) return;
-        const applyPlan = plan.filter((p) => p.action !== "skip").map((p) => ({ action: p.action as ("add"|"update"|"remove"), name: p.name, json: p.json }));
-        const summary = await adapter.applyInstall(applyPlan, scope, cwd);
-        const skipped = plan.filter((p) => p.action === "skip").length;
-        if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summary, skipped));
-        printTableSection("Summary", ["Added","Updated","Removed","Skipped","Failed"], [[String(summary.added), String(summary.updated), String(summary.removed), String(skipped), String(summary.failed)]], fmt);
-        if (summary.failed > 0) { process.exitCode = 1; return; }
-        const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
-        const lockPath = resolve(cwd, "katacut.lock.json");
-        await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
-        const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
-        await appendProjectStateRun(cwd, { at: new Date().toISOString(), client: adapter.id, requestedScope: scope, realizedScope: scope, mode: "native", intent: "project", result: summary, entries: stateEntries });
-        return;
-      }
-      if (asUrl && isRegistryVersionUrl(asUrl)) {
-        const rs = await resolveFromRegistry(asUrl);
-        name = rs.name;
-        const cfgEntry = rs.config;
+				// 1) Smithery URL (streamable HTTP endpoint)
+				if (asUrl && isSmitheryServerUrl(asUrl)) {
+					const rsSmith = await (async () => ({
+						name: asUrl.pathname.split("/").filter(Boolean).slice(-2, -1)[0]?.replace(/^@/, "") ?? "server",
+						config: { transport: "http" as const, url: asUrl.toString() },
+					}))();
+					name = rsSmith.name;
+					const cfgEntry: McpServerConfig = rsSmith.config;
 
 					const config = await loadAndValidateConfig(undefined);
 					const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
@@ -121,7 +93,12 @@ export function registerMcpAdd(parent: Command) {
 					const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 					console.log(JSON.stringify(plan, null, 2));
-					printTableSection("Plan", ["Name", "Action", "Scope"], plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]), fmt);
+					printTableSection(
+						"Plan",
+						["Name", "Action", "Scope"],
+						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
+						fmt,
+					);
 					if (opts.dryRun) return;
 					const applyPlan = plan
 						.filter((p) => p.action !== "skip")
@@ -129,26 +106,114 @@ export function registerMcpAdd(parent: Command) {
 					const summary = await adapter.applyInstall(applyPlan, scope, cwd);
 					const skipped = plan.filter((p) => p.action === "skip").length;
 					if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summary, skipped));
-					printTableSection("Summary", ["Added", "Updated", "Removed", "Skipped", "Failed"], [[String(summary.added), String(summary.updated), String(summary.removed), String(skipped), String(summary.failed)]], fmt);
-					if (summary.failed > 0) { process.exitCode = 1; return; }
+					printTableSection(
+						"Summary",
+						["Added", "Updated", "Removed", "Skipped", "Failed"],
+						[
+							[
+								String(summary.added),
+								String(summary.updated),
+								String(summary.removed),
+								String(skipped),
+								String(summary.failed),
+							],
+						],
+						fmt,
+					);
+					if (summary.failed > 0) {
+						process.exitCode = 1;
+						return;
+					}
 					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
 					const lockPath = resolve(cwd, "katacut.lock.json");
 					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
 					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
-					await appendProjectStateRun(cwd, { at: new Date().toISOString(), client: adapter.id, requestedScope: scope, realizedScope: scope, mode: "native", intent: "project", result: summary, entries: stateEntries });
+					await appendProjectStateRun(cwd, {
+						at: new Date().toISOString(),
+						client: adapter.id,
+						requestedScope: scope,
+						realizedScope: scope,
+						mode: "native",
+						intent: "project",
+						result: summary,
+						entries: stateEntries,
+					});
+					return;
+				}
+				if (asUrl && isRegistryVersionUrl(asUrl)) {
+					const rs = await resolveFromRegistry(asUrl);
+					name = rs.name;
+					const cfgEntry = rs.config;
+
+					const config = await loadAndValidateConfig(undefined);
+					const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
+					if (!edited.mcp) edited.mcp = {};
+					edited.mcp[name] = cfgEntry;
+					const cfgPath = resolve(cwd, "katacut.config.jsonc");
+					await writeFile(cfgPath, JSON.stringify(edited, null, 2), "utf8");
+
+					const desired = adapter.desiredFromConfig(edited);
+					const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
+					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
+					console.log(JSON.stringify(plan, null, 2));
+					printTableSection(
+						"Plan",
+						["Name", "Action", "Scope"],
+						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
+						fmt,
+					);
+					if (opts.dryRun) return;
+					const applyPlan = plan
+						.filter((p) => p.action !== "skip")
+						.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
+					const summary = await adapter.applyInstall(applyPlan, scope, cwd);
+					const skipped = plan.filter((p) => p.action === "skip").length;
+					if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summary, skipped));
+					printTableSection(
+						"Summary",
+						["Added", "Updated", "Removed", "Skipped", "Failed"],
+						[
+							[
+								String(summary.added),
+								String(summary.updated),
+								String(summary.removed),
+								String(skipped),
+								String(summary.failed),
+							],
+						],
+						fmt,
+					);
+					if (summary.failed > 0) {
+						process.exitCode = 1;
+						return;
+					}
+					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+					const lockPath = resolve(cwd, "katacut.lock.json");
+					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
+					await appendProjectStateRun(cwd, {
+						at: new Date().toISOString(),
+						client: adapter.id,
+						requestedScope: scope,
+						realizedScope: scope,
+						mode: "native",
+						intent: "project",
+						result: summary,
+						entries: stateEntries,
+					});
 					return;
 				}
 
-      if (asUrl) {
-        const rsJson = await resolveJsonDescriptor(asUrl);
-        name = rsJson.name;
-        const cfgEntry = rsJson.config;
+				if (asUrl) {
+					const rsJson = await resolveJsonDescriptor(asUrl);
+					name = rsJson.name;
+					const cfgEntry = rsJson.config;
 
 					// Load and edit config
 					const config = await loadAndValidateConfig(undefined);
 					const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
-        if (!edited.mcp) edited.mcp = {};
-        edited.mcp[name] = cfgEntry;
+					if (!edited.mcp) edited.mcp = {};
+					edited.mcp[name] = cfgEntry;
 					const cfgPath = resolve(cwd, "katacut.config.jsonc");
 					await writeFile(cfgPath, JSON.stringify(edited, null, 2), "utf8");
 
@@ -211,10 +276,81 @@ export function registerMcpAdd(parent: Command) {
 					return;
 				}
 
-				// Name path (registry) — placeholder error until implemented
-				const base = opts.registry ?? "https://registry.modelcontextprotocol.io";
-				console.error(`Registry lookup not yet implemented for ref='${ref}'. Planned base: ${base}`);
-				process.exitCode = 1;
+				// Name path (registry): support full (ns/name@ver) and short (name@ver via search)
+				const at = (() => { const i = ref.lastIndexOf("@"); return i > 0 ? i : -1; })();
+				const rawName = at > 0 ? ref.slice(0, at) : ref;
+				const regVersion = at > 0 ? ref.slice(at + 1) : (opts.version ?? "latest");
+				const base = opts.registry ?? REGISTRY_DEFAULT_BASE;
+				try {
+					const regName = rawName.includes("/") ? rawName : await resolveCanonicalNameByShort(rawName, base);
+					const url = buildRegistryVersionUrl(regName, regVersion, base);
+					const rs = await resolveFromRegistry(url);
+					name = rs.name;
+					const cfgEntry: McpServerConfig = rs.config;
+
+					const config = await loadAndValidateConfig(undefined);
+					const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
+					if (!edited.mcp) edited.mcp = {};
+					edited.mcp[name] = cfgEntry;
+					const cfgPath = resolve(cwd, "katacut.config.jsonc");
+					await writeFile(cfgPath, JSON.stringify(edited, null, 2), "utf8");
+
+					const desired = adapter.desiredFromConfig(edited);
+					const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
+					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
+					console.log(JSON.stringify(plan, null, 2));
+					printTableSection(
+						"Plan",
+						["Name", "Action", "Scope"],
+						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
+						fmt,
+					);
+					if (opts.dryRun) return;
+
+					const applyPlan = plan
+						.filter((p) => p.action !== "skip")
+						.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
+					const summary = await adapter.applyInstall(applyPlan, scope, cwd);
+					const skipped = plan.filter((p) => p.action === "skip").length;
+					if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summary, skipped));
+					printTableSection(
+						"Summary",
+						["Added", "Updated", "Removed", "Skipped", "Failed"],
+						[
+							[
+								String(summary.added),
+								String(summary.updated),
+								String(summary.removed),
+								String(skipped),
+								String(summary.failed),
+							],
+						],
+						fmt,
+					);
+					if (summary.failed > 0) {
+						process.exitCode = 1;
+						return;
+					}
+					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+					const lockPath = resolve(cwd, "katacut.lock.json");
+					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
+					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
+					await appendProjectStateRun(cwd, {
+						at: new Date().toISOString(),
+						client: adapter.id,
+						requestedScope: scope,
+						realizedScope: scope,
+						mode: "native",
+						intent: "project",
+						result: summary,
+						entries: stateEntries,
+					});
+					return;
+				} catch (e) {
+					console.error(String(e instanceof Error ? e.message : e));
+					process.exitCode = 1;
+					return;
+				}
 			},
 		);
 }

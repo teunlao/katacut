@@ -1,7 +1,8 @@
 import type { ResolvedServer } from "./types.js";
+import { SMITHERY_SERVER_HOST } from "../constants.js";
 
 export function isSmitheryServerUrl(u: URL): boolean {
-  return u.hostname === "server.smithery.ai" && /\/mcp\/?$/.test(u.pathname);
+  return u.hostname === SMITHERY_SERVER_HOST && /\/mcp\/?$/.test(u.pathname);
 }
 
 function nameFromSmitheryUrl(u: URL): string {
@@ -15,4 +16,3 @@ export function resolveSmithery(u: URL): ResolvedServer {
   const name = nameFromSmitheryUrl(u);
   return { name, config: { transport: "http", url: u.toString() } };
 }
-
