@@ -4,6 +4,7 @@ import { join } from "node:path";
 
 import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
+import { resolveFormatFlags } from "../lib/format.js";
 import { readProjectState } from "../lib/state.js";
 
 interface PathCheck { readonly path: string; readonly readable?: boolean; readonly writable?: boolean }
@@ -93,8 +94,9 @@ export function registerDoctorCommand(program: Command) {
         localOverrides,
       };
 
+      const fmt = resolveFormatFlags(process.argv, options);
       console.log(JSON.stringify(report, null, 2));
-      if (!options.json && !options.noSummary) {
+      if (!fmt.json && !fmt.noSummary) {
         // Human-friendly summary
         console.log("Doctor Summary:");
         const headers = ["Item", "Value"] as const;

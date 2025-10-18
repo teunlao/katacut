@@ -2,9 +2,12 @@ import type { Command } from "commander";
 import { getAdapter } from "../../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../../lib/config.js";
 import { resolve } from "node:path";
-import { readFile, writeFile } from "node:fs/promises";
+import { writeFile } from "node:fs/promises";
 import { buildLock, diffDesiredCurrent, type Lockfile, type Scope } from "@katacut/core";
 import { appendProjectStateRun, buildStateEntries } from "../../lib/state.js";
+import { resolveFormatFlags } from "../../lib/format.js";
+import type { KatacutConfig } from "@katacut/schema";
+import type { ServerJson } from "@katacut/core";
 
 interface RemoveOptions {
   readonly client: string;
@@ -43,8 +46,9 @@ export function registerMcpRemove(parent: Command) {
       }
 
       // Build plan JSON structure
-      const planJson: Array<{ name: string; scopes: string[]; action: string }> = names.map((n) => ({ name: n, scopes, action: "remove" }));
-      if (!opts.json && !opts.noSummary) { console.log("Plan:"); }
+      const planJson: ReadonlyArray<{ readonly name: string; readonly scopes: readonly string[]; readonly action: "remove" }> = names.map((n) => ({ name: n, scopes, action: "remove" as const }));
+      const fmt = resolveFormatFlags(process.argv, { json: opts.json, noSummary: opts.noSummary });
+      if (!fmt.json && !fmt.noSummary) { console.log("Plan:"); }
       console.log(JSON.stringify(planJson, null, 2));
       if (opts.dryRun) return;
 
@@ -69,17 +73,19 @@ export function registerMcpRemove(parent: Command) {
       // Default: edit config and prune via internal apply
       const config = await loadAndValidateConfig(opts.config);
       // Remove names from config.mcp
-      const edited = { ...config, mcp: { ...(config.mcp ?? {}) } } as any;
-      for (const n of names) delete edited.mcp[n];
+      const edited: KatacutConfig = { ...config, mcp: { ...(config.mcp ?? {}) } };
+      for (const n of names) delete edited.mcp![n];
       // Compute desired and current for first scope (if both, handle project then user)
       for (const s of scopes) {
         const desired = adapter.desiredFromConfig(edited);
         const current = s === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
         const plan = diffDesiredCurrent(desired, current.mcpServers, true, true);
-        const applyPlan = plan.filter(p => p.action !== "skip").map(p => ({ action: p.action as ("add"|"update"|"remove"), name: p.name, json: p.json }));
+        const applyPlan = plan
+          .filter((p): p is { action: "add"|"update"|"remove"; name: string; json?: ServerJson } => p.action !== "skip")
+          .map((p) => ({ action: p.action, name: p.name, json: p.json }));
         const summary = await adapter.applyInstall(applyPlan, s, cwd);
         const mode: "native"|"emulated" = "native";
-        const stateEntries = buildStateEntries(plan as any, desired, current.mcpServers, s);
+        const stateEntries = buildStateEntries(plan, desired, current.mcpServers, s);
         await appendProjectStateRun(cwd, { at: new Date().toISOString(), client: adapter.id, requestedScope: s, realizedScope: s, mode, intent: "project", result: summary, entries: stateEntries });
         // Write lock for this scope
         const lock: Lockfile = buildLock(adapter.id, desired, s);

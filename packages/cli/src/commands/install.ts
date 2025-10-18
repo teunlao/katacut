@@ -6,6 +6,7 @@ import type { Command } from "commander";
 import { getAdapter } from "../lib/adapters/registry.js";
 import { loadAndValidateConfig } from "../lib/config.js";
 import { appendProjectStateRun, buildStateEntries } from "../lib/state.js";
+import { resolveFormatFlags } from "../lib/format.js";
 
 export interface InstallOptions {
 	readonly config?: string;
@@ -104,9 +105,10 @@ export function registerInstallCommand(program: Command) {
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);
 
       // Print plan
-      if (!options.json && !options.noSummary) console.log("Plan:");
+      const fmt = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
+      if (!fmt.json && !fmt.noSummary) console.log("Plan:");
       console.log(JSON.stringify(plan, null, 2));
-      if (!options.json && !options.noSummary) printPlanTable(plan, scope);
+      if (!fmt.json && !fmt.noSummary) printPlanTable(plan, scope);
 
       // Safety: require --yes for --prune to avoid accidental removals
       if (options.prune && !options.yes) {
@@ -129,7 +131,7 @@ export function registerInstallCommand(program: Command) {
 				.filter((p) => p.action !== "skip")
 				.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
       const summary = await adapter.applyInstall(applyPlan, scope, cwd);
-      if (!options.json && !options.noSummary) {
+      if (!fmt.json && !fmt.noSummary) {
         console.log(
           `Summary: added=${summary.added} updated=${summary.updated} removed=${summary.removed} skipped=${skipped} failed=${summary.failed}`,
         );
@@ -164,26 +166,29 @@ export function registerInstallCommand(program: Command) {
 
 type PlanItem = { readonly action: string; readonly name: string };
 function printPlanTable(plan: readonly PlanItem[], scope: Scope) {
-	const headers = ["Name", "Action", "Scope"] as const;
-	const rows = plan.map((p) => [p.name, p.action.toUpperCase(), scope]);
-	renderTable(
-		headers as unknown as string[],
-		rows.map((r) => r.map(String)),
-	);
+	const headers: readonly string[] = ["Name", "Action", "Scope"];
+	const rows: readonly (readonly string[])[] = plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)] as const);
+	renderTable(headers, rows);
 }
 
 function printSummaryTable(
 	summary: { added: number; updated: number; removed: number; failed: number },
 	skipped: number,
 ) {
-	const headers = ["Added", "Updated", "Removed", "Skipped", "Failed"] as const;
-	const rows = [[summary.added, summary.updated, summary.removed, skipped, summary.failed].map(String)];
-	renderTable(headers as unknown as string[], rows);
+	const headers: readonly string[] = ["Added", "Updated", "Removed", "Skipped", "Failed"];
+	const rows: readonly (readonly string[])[] = [[
+		String(summary.added),
+		String(summary.updated),
+		String(summary.removed),
+		String(skipped),
+		String(summary.failed),
+	]];
+	renderTable(headers, rows);
 }
 
-function renderTable(headers: string[], rows: string[][]) {
+function renderTable(headers: readonly string[], rows: readonly (readonly string[])[]) {
 	const widths = headers.map((h, i) => Math.max(h.length, ...rows.map((r) => (r[i] ?? "").length)));
-	const line = (cols: string[]) => cols.map((c, i) => c.padEnd(widths[i], " ")).join("  |  ");
+	const line = (cols: readonly string[]) => cols.map((c, i) => c.padEnd(widths[i], " ")).join("  |  ");
 	console.log(line(headers));
 	console.log(widths.map((w) => "".padEnd(w, "-")).join("--+--"));
 	for (const r of rows) console.log(line(r));

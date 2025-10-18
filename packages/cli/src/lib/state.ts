@@ -27,11 +27,16 @@ export interface ProjectState {
   readonly runs: StateRun[];
 }
 
+function hasRunsArray(x: unknown): x is { runs: unknown } {
+  return Boolean(x) && typeof x === "object" && "runs" in (x as Record<string, unknown>);
+}
+
 export async function readProjectState(cwd = process.cwd()): Promise<ProjectState | undefined> {
   try {
     const text = await readFile(join(cwd, ".katacut", "state.json"), "utf8");
-    const parsed = JSON.parse(text) as unknown;
-    if (!parsed || typeof parsed !== "object" || !Array.isArray((parsed as any).runs)) return undefined;
+    const parsed: unknown = JSON.parse(text);
+    if (!hasRunsArray(parsed) || !Array.isArray(parsed.runs)) return undefined;
+    // justified: persisted file is produced by this module; structure is controlled here
     return parsed as ProjectState;
   } catch {
     return undefined;
