@@ -127,7 +127,7 @@ describe("doctor local overrides", () => {
 					runs: [
 						{
 							at: new Date().toISOString(),
-							client: "claude-code",
+							clients: ["claude-code"],
 							requestedScope: "project",
 							realizedScope: "project",
 							mode: "native",

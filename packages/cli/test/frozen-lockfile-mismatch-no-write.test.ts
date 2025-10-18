@@ -26,7 +26,7 @@ describe("kc install --lockfile-only --frozen-lockfile with mismatch", () => {
       await writeFile(join(dir, ".mcp.json"), JSON.stringify({ mcpServers: {} }), "utf8");
       const lock = {
         version: "1",
-        client: "claude-code",
+        clients: ["claude-code"],
         mcpServers: {
           a: { scope: "project", fingerprint: "fp-a", snapshot: { type: "http", url: "https://a" } },
         },
@@ -79,4 +79,3 @@ describe("kc install --lockfile-only --frozen-lockfile with mismatch", () => {
     }
   });
 });
-

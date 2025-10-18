@@ -9,18 +9,22 @@ export function registerLockCommand(program: Command) {
 
 	cmd
 		.command("generate")
-		.description("Generate lockfile from config for a client")
+    .description("Generate lockfile from config for selected clients")
 		.option("-c, --config <path>", "path to configuration file")
-		.option("--client <id>", "Client id (default: claude-code)")
+    .option("--client <id>", "Client id (default: claude-code)")
+    .option("--clients <ids>", "Comma-separated client ids (overrides --client)")
 		.option("--scope <scope>", "Scope for desired servers (default: project)")
 		.option("--out <path>", "Write lockfile to path (if omitted, prints to stdout)")
-		.action(async (opts: { config?: string; client?: string; scope?: Scope; out?: string }) => {
-			const clientId = opts.client ?? "claude-code";
-			const adapter = await getAdapter(clientId);
-			const config = await loadAndValidateConfig(opts.config);
-			const desired = adapter.desiredFromConfig(config);
-			const scope: Scope = opts.scope === "user" ? "user" : "project";
-			const lock = buildLock(adapter.id, desired, scope);
+		.action(async (opts: { config?: string; client?: string; clients?: string; scope?: Scope; out?: string }) => {
+      const clientId = opts.client ?? "claude-code";
+			const list = (opts.clients ? opts.clients.split(",").map((s: string) => s.trim()).filter(Boolean) : []) || [];
+      const clients = list.length > 0 ? list : [clientId];
+			const adapters = await Promise.all(clients.map((c: string) => getAdapter(c)));
+      const config = await loadAndValidateConfig(opts.config);
+      // общий снимок один для всех клиентов
+      const desired = adapters[0].desiredFromConfig(config);
+      const scope: Scope = opts.scope === "user" ? "user" : "project";
+      const lock = buildLock(clients, desired, scope);
 			if (opts.out) {
     				const path = resolve(process.cwd(), opts.out);
 				await (await import("node:fs/promises")).writeFile(path, JSON.stringify(lock, null, 2), "utf8");

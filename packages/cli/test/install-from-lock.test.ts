@@ -13,7 +13,7 @@ describe("kc install --from-lock applies strictly from lock snapshots", () => {
       // Lock with snapshot 'b'
       const lock = {
         version: "1",
-        client: "claude-code",
+        clients: ["claude-code"],
         mcpServers: {
           b: { scope: "project", fingerprint: "x", snapshot: { type: "http", url: "https://b" } },
         },
@@ -52,4 +52,3 @@ describe("kc install --from-lock applies strictly from lock snapshots", () => {
     }
   });
 });
-

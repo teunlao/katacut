@@ -1,9 +1,9 @@
 import { resolve } from "node:path";
 import { DEFAULT_CONFIG_FILENAMES, resolveConfigPath } from "@katacut/core";
-import { parseConfig } from "@katacut/schema";
+import { parseConfig, type KatacutConfig } from "@katacut/schema";
 import { readConfigFile } from "@katacut/utils";
 
-export async function loadAndValidateConfig(explicitPath?: string) {
+export async function loadAndValidateConfig(explicitPath?: string): Promise<KatacutConfig> {
 	const cwd = process.cwd();
 	const path = explicitPath ? resolve(cwd, explicitPath) : await resolveConfigPath({ cwd });
 	if (!path) throw new Error(`Configuration file not found. Checked: ${DEFAULT_CONFIG_FILENAMES.join(", ")}`);

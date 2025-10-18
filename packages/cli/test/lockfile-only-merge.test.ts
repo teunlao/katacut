@@ -18,7 +18,7 @@ describe("kc install --lockfile-only merges with existing entries", () => {
       // Existing lock has unrelated entry x with resolvedVersion
       const lockExisting = {
         version: "1",
-        client: "claude-code",
+        clients: ["claude-code"],
         mcpServers: {
           x: { scope: "project", fingerprint: "fp-x", resolvedVersion: "1.2.3" },
         },
@@ -62,4 +62,3 @@ describe("kc install --lockfile-only merges with existing entries", () => {
     }
   });
 });
-

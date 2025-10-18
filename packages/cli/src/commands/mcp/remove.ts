@@ -114,7 +114,7 @@ export function registerMcpRemove(parent: Command) {
 					entries: stateEntries,
 				});
 				// Write lock for this scope
-				const lock: Lockfile = buildLock(adapter.id, desired, s);
+                const lock: Lockfile = buildLock([adapter.id], desired, s);
 				const lockPath = resolve(cwd, "katacut.lock.json");
 				await writeFile(lockPath, JSON.stringify(lock, null, 2), "utf8");
 			}

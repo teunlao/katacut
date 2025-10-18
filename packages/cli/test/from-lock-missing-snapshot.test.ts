@@ -25,7 +25,7 @@ describe("kc install --from-lock with missing snapshot", () => {
       // Lock has entry without snapshot
       const lock = {
         version: "1",
-        client: "claude-code",
+        clients: ["claude-code"],
         mcpServers: {
           bad: { scope: "project", fingerprint: "whatever" },
         },
@@ -73,4 +73,3 @@ describe("kc install --from-lock with missing snapshot", () => {
     }
   });
 });
-

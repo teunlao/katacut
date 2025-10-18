@@ -52,5 +52,10 @@ export interface KatacutConfig {
 	version?: string;
 	metadata?: MetadataConfig;
 	profiles?: Record<string, ProfileConfig>;
+	/**
+	 * Whitelist of target client adapters to apply configuration to.
+	 * Example: ["claude-code", "gemini-cli", "cursor"].
+	 */
+	clients?: string[];
 	mcp?: Record<string, McpServerConfig>;
 }

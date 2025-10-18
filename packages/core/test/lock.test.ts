@@ -11,14 +11,14 @@ describe("lockfile core", () => {
 		const fpA2 = computeFingerprint({ type: "http", url: "https://a" });
 		expect(fpA).toBe(fpA2);
 
-		const lock = buildLock("claude-code", desired, "project");
+		const lock = buildLock(["claude-code"], desired, "project");
 		const report = verifyLock(lock, { source: undefined, mcpServers: { ...desired } }, { mcpServers: {} });
 		expect(report.status).toBe("ok");
 	});
 
 	it("reports mismatch for missing and changed servers", () => {
 		const desired = { x: { type: "http", url: "https://x" } } as const;
-		const lock = buildLock("claude-code", desired, "project");
+		const lock = buildLock(["claude-code"], desired, "project");
 		const report = verifyLock(lock, { source: undefined, mcpServers: {} }, { mcpServers: {} });
 		expect(report.status).toBe("mismatch");
 		expect(report.mismatches[0]?.reason).toBe("missing");
@@ -27,7 +27,7 @@ describe("lockfile core", () => {
 	it("detects scope mismatch and extras", () => {
 		const lock = {
 			version: "1" as const,
-			client: "claude-code",
+			clients: ["claude-code"],
 			mcpServers: {
 				a: { scope: "project" as const, fingerprint: computeFingerprint({ type: "http", url: "https://a" }) },
 			},

@@ -12,6 +12,12 @@
 			"type": "string",
 			"description": "Configuration version"
 		},
+		"clients": {
+			"type": "array",
+			"description": "Whitelist of target clients to apply configuration to (adapter IDs)",
+			"items": { "type": "string" },
+			"uniqueItems": true
+		},
 		"metadata": {
 			"type": "object",
 			"additionalProperties": false,

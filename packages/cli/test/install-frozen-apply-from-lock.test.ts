@@ -29,7 +29,7 @@ describe("kc install --frozen-lock applies from lock when matches", () => {
       const snap = { type: "http", url: "https://a" } as const;
       const lock = {
         version: "1",
-        client: "claude-code",
+        clients: ["claude-code"],
         mcpServers: {
           a: { scope: "project", fingerprint: computeFingerprint(snap), snapshot: snap },
         },

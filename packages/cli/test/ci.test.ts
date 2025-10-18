@@ -15,7 +15,7 @@ describe("kc ci", () => {
 			);
 			const lock = {
 				version: "1",
-				client: "claude-code",
+				clients: ["claude-code"],
 				mcpServers: { x: { scope: "project", fingerprint: "" } },
 			} as const;
 
@@ -28,7 +28,7 @@ describe("kc ci", () => {
 						// Consider mismatch when project has no 'x'
 						const ok = Object.hasOwn(project.mcpServers, "x");
 						return {
-							client: "claude-code",
+							clients: ["claude-code"],
 							status: ok ? "ok" : "mismatch",
 							mismatches: ok ? [] : [{ name: "x", reason: "missing" }],
 						};
@@ -68,7 +68,7 @@ describe("kc ci", () => {
 					verifyLock: (_l: unknown, project: { mcpServers: Record<string, unknown> }) => {
 						const ok = Object.hasOwn(project.mcpServers, "x");
 						return {
-							client: "claude-code",
+							clients: ["claude-code"],
 							status: ok ? "ok" : "mismatch",
 							mismatches: ok ? [] : [{ name: "x", reason: "missing" }],
 						};

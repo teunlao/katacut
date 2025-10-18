@@ -10,7 +10,7 @@ export interface LockEntry {
 }
 export interface Lockfile {
 	readonly version: "1";
-	readonly client: string;
+	readonly clients: readonly string[];
 	readonly mcpServers: Record<string, LockEntry>;
 }
 
@@ -20,10 +20,10 @@ export function computeFingerprint(json: ServerJson): string {
 	return h;
 }
 
-export function buildLock(client: string, desired: Record<string, ServerJson>, scope: Scope): Lockfile {
+export function buildLock(clients: readonly string[], desired: Record<string, ServerJson>, scope: Scope): Lockfile {
     const entries: Record<string, LockEntry> = {};
     for (const [name, json] of Object.entries(desired)) entries[name] = { scope, fingerprint: computeFingerprint(json), snapshot: json };
-    return { version: "1", client, mcpServers: entries };
+    return { version: "1", clients: [...new Set(clients)] , mcpServers: entries };
 }
 
 export interface VerifyMismatch {
@@ -34,7 +34,6 @@ export interface VerifyMismatch {
 }
 
 export interface VerifyReport {
-	readonly client: string;
 	readonly status: "ok" | "mismatch";
 	readonly mismatches: readonly VerifyMismatch[];
 }
@@ -75,7 +74,7 @@ export function verifyLock(lock: Lockfile, project: ReadMcpResult, user: ReadMcp
 	for (const name of Object.keys(user.mcpServers)) {
 		if (!lockNames.has(name)) mismatches.push({ name, actual: { scope: "user" }, reason: "extra" });
 	}
-	return { client: lock.client, status: mismatches.length === 0 ? "ok" : "mismatch", mismatches };
+	return { status: mismatches.length === 0 ? "ok" : "mismatch", mismatches };
 }
 
 /**
@@ -86,8 +85,8 @@ export function verifyLock(lock: Lockfile, project: ReadMcpResult, user: ReadMcp
  * - If clients differ, returns `next` as a full replacement (v1 is single‑client).
  */
 export function mergeLock(prev: Lockfile | undefined, next: Lockfile): Lockfile {
-    if (!prev || prev.client !== next.client) return next;
-    const merged: Lockfile = { version: "1", client: prev.client, mcpServers: { ...prev.mcpServers } };
+    if (!prev) return next;
+    const merged: Lockfile = { version: "1", clients: Array.from(new Set([...(prev.clients ?? []), ...(next.clients ?? [])])), mcpServers: { ...prev.mcpServers } };
     for (const [name, entryNext] of Object.entries(next.mcpServers)) {
         const entryPrev = prev.mcpServers[name];
         if (!entryPrev) {

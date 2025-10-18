@@ -99,7 +99,7 @@ export function registerMcpAdd(parent: Command) {
 					printTableSection(
 						"Plan",
 						["Name", "Action", "Scope"],
-						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
+						plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)]),
 						fmt,
 					);
 					if (opts.dryRun) return;
@@ -127,7 +127,7 @@ export function registerMcpAdd(parent: Command) {
 						process.exitCode = 1;
 						return;
 					}
-					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+                    const expectedLock: Lockfile = buildLock([adapter.id], desired, scope);
 					const lockPath = resolve(cwd, "katacut.lock.json");
 					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
 					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
@@ -159,12 +159,7 @@ export function registerMcpAdd(parent: Command) {
 					const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 					console.log(JSON.stringify(plan, null, 2));
-					printTableSection(
-						"Plan",
-						["Name", "Action", "Scope"],
-						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
-						fmt,
-					);
+                    printTableSection("Plan", ["Name", "Action", "Scope"], plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)]), fmt);
 					if (opts.dryRun) return;
 					const applyPlan = plan
 						.filter((p) => p.action !== "skip")
@@ -190,7 +185,7 @@ export function registerMcpAdd(parent: Command) {
 						process.exitCode = 1;
 						return;
 					}
-					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+                    const expectedLock: Lockfile = buildLock([adapter.id], desired, scope);
 					const lockPath = resolve(cwd, "katacut.lock.json");
 					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
 					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
@@ -227,12 +222,7 @@ export function registerMcpAdd(parent: Command) {
 
 					// Output plan
 					console.log(JSON.stringify(plan, null, 2));
-					printTableSection(
-						"Plan",
-						["Name", "Action", "Scope"],
-						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
-						fmt,
-					);
+                    printTableSection("Plan", ["Name", "Action", "Scope"], plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)]), fmt);
 					if (opts.dryRun) return;
 
 					// Apply
@@ -262,7 +252,7 @@ export function registerMcpAdd(parent: Command) {
 					}
 
 					// State & lock
-					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+                    const expectedLock: Lockfile = buildLock([adapter.id], desired, scope);
 					const lockPath = resolve(cwd, "katacut.lock.json");
 					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
 					const stateEntries = buildStateEntries(plan, desired, current.mcpServers, scope);
@@ -307,12 +297,7 @@ export function registerMcpAdd(parent: Command) {
 					const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 					const plan = diffDesiredCurrent(desired, current.mcpServers, false, true).filter((p) => p.name === name);
 					console.log(JSON.stringify(plan, null, 2));
-					printTableSection(
-						"Plan",
-						["Name", "Action", "Scope"],
-						plan.map((p) => [p.name, p.action.toUpperCase(), scope] as unknown as readonly string[]),
-						fmt,
-					);
+                    printTableSection("Plan", ["Name", "Action", "Scope"], plan.map((p) => [p.name, p.action.toUpperCase(), String(scope)]), fmt);
 					if (opts.dryRun) return;
 
 					const applyPlan = plan
@@ -339,10 +324,11 @@ export function registerMcpAdd(parent: Command) {
 						process.exitCode = 1;
 						return;
 					}
-					const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
+                    const expectedLock: Lockfile = buildLock([adapter.id], desired, scope);
 					// Record resolved version in lock for this name (npm-like lock behavior)
 					if (/^\d+\.\d+\.\d+/.test(concrete)) {
-						expectedLock.mcpServers[name] = { ...expectedLock.mcpServers[name], resolvedVersion: concrete } as any;
+						const prev = expectedLock.mcpServers[name];
+						expectedLock.mcpServers[name] = { ...prev, resolvedVersion: concrete };
 					}
 					const lockPath = resolve(cwd, "katacut.lock.json");
 					await writeFile(lockPath, JSON.stringify(expectedLock, null, 2), "utf8");
