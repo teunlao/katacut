@@ -1,18 +1,3 @@
 {
-	"mcpServers": {
-		"github": {
-			"type": "http",
-			"url": "https://api.githubcopilot.com/mcp"
-		},
-		"fs": {
-			"type": "stdio",
-			"command": "npx",
-			"args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
-			"env": {}
-		},
-		"memory": {
-			"type": "http",
-			"url": "https://server.smithery.ai/@modelcontextprotocol/server-memory/mcp"
-		}
-	}
+  "mcpServers": {}
 }

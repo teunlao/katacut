@@ -1,0 +1,8 @@
+{
+  "version": "1",
+  "clients": [
+    "claude-code",
+    "gemini-cli"
+  ],
+  "mcpServers": {}
+}

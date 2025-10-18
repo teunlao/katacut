@@ -39,3 +39,8 @@ dev-debug.log
 # Task files
 # tasks.json
 # tasks/
+
+# VitePress cache/build (docs)
+packages/docs/docs/.vitepress/cache/
+packages/docs/docs/.vitepress/dist/
+packages/docs/docs/dist/

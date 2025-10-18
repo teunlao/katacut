@@ -20,7 +20,6 @@ export interface InstallOptions {
 	readonly dryRun?: boolean;
 	readonly prune?: boolean;
 	readonly writeLock?: boolean;
-	readonly frozenLock?: boolean;
 	readonly frozenLockfile?: boolean;
 	readonly fromLock?: boolean;
 	readonly lockfileOnly?: boolean;
@@ -45,7 +44,6 @@ export function registerInstallCommand(program: Command) {
 		.option('--prune', 'remove servers not present in config (default)', true)
 		.option('--no-prune', 'do not remove servers not present in config')
 		.option('--no-write-lock', 'do not write katacut.lock.json after apply')
-		.option('--frozen-lock', 'require existing lock to match config (alias of --frozen-lockfile)', false)
 		.option(
 			'--frozen-lockfile',
 			'require existing lock to match config; if matches, apply strictly from lock and do not write lockfile',
@@ -82,7 +80,7 @@ export function registerInstallCommand(program: Command) {
 				const desiredForLock = buildDesired(config);
 				const expectedLock: Lockfile = buildLock(targetClients, desiredForLock, requestedScope);
 				const lockPath = resolve(process.cwd(), 'katacut.lock.json');
-				if (options.frozenLock || options.frozenLockfile) {
+				if (options.frozenLockfile) {
 					try {
 						const text = await readFile(lockPath, 'utf8');
 						const currentLock = JSON.parse(text) as Lockfile;
@@ -106,7 +104,7 @@ export function registerInstallCommand(program: Command) {
 			}
 
 			// Frozen-lockfile: validate lock against desired; if match → apply strictly from lock; never write lock
-			const frozen = Boolean(options.frozenLock || options.frozenLockfile);
+			const frozen = Boolean(options.frozenLockfile);
 			if (frozen) {
 				const desiredForLock = buildDesired(config);
 				const expectedLockEarly: Lockfile = buildLock(targetClients, desiredForLock, requestedScope);
@@ -241,7 +239,7 @@ export function registerInstallCommand(program: Command) {
 							planFromLock.map((p) => [p.name, p.action.toUpperCase(), String(scope), adapter.id] as const),
 							fmt,
 						);
-						if (options.dryRun || options.frozenLock || options.frozenLockfile) {
+						if (options.dryRun || options.frozenLockfile) {
 							// dry-run: no apply; skipped is only presented in per-client table
 							continue;
 						}
