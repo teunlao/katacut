@@ -285,7 +285,7 @@ export function registerMcpAdd(parent: Command) {
 				try {
 					const regName = rawName.includes("/") ? rawName : await resolveCanonicalNameByShort(rawName, base);
 					const url = buildRegistryVersionUrl(regName, regVersion, base);
-					const rs = await resolveFromRegistry(url);
+                    const rs = await resolveFromRegistry(url, { requestedVersion: regVersion });
 					name = rs.name;
 					const cfgEntry: McpServerConfig = rs.config;
 
