@@ -4,16 +4,38 @@
   "mcpServers": {
     "mcp-server-filesystem": {
       "scope": "project",
-      "fingerprint": "3dc3d1aa36165196ddc93fc8fa6a23eeb0f539f03ef323c4eb9668d20ee0848b"
+      "fingerprint": "3dc3d1aa36165196ddc93fc8fa6a23eeb0f539f03ef323c4eb9668d20ee0848b",
+      "snapshot": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@agent-infra/mcp-server-filesystem"
+        ]
+      }
     },
     "memory-mcp": {
       "scope": "project",
-      "fingerprint": "4da3777b49fd4ebc045d9f78e78999d6e190abc0f30110259f2367bd9c747a8f"
+      "fingerprint": "4da3777b49fd4ebc045d9f78e78999d6e190abc0f30110259f2367bd9c747a8f",
+      "snapshot": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@letta-ai/memory-mcp@2.0.2"
+        ]
+      }
     },
     "neverinfamous-memory-journal-mcp": {
       "scope": "project",
       "fingerprint": "fcd3f7ffef6c04175273c4f0507d31b2e727d351eb24122c834d06fa75ce91fb",
-      "resolvedVersion": "1.0.0"
+      "snapshot": {
+        "type": "http",
+        "url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp",
+        "headers": {
+          "Authorization": "Bearer {smithery_api_key}"
+        }
+      }
     }
   }
 }

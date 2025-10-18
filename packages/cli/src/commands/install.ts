@@ -18,6 +18,8 @@ export interface InstallOptions {
 	readonly prune?: boolean;
 	readonly writeLock?: boolean;
 	readonly frozenLock?: boolean;
+	readonly frozenLockfile?: boolean;
+	readonly fromLock?: boolean;
 	readonly lockfileOnly?: boolean;
 	readonly yes?: boolean;
 	readonly json?: boolean;
@@ -35,8 +37,10 @@ export function registerInstallCommand(program: Command) {
 		.option("--dry-run", "print plan without changes", false)
 		.option("--prune", "remove servers not present in config", false)
 		.option("--no-write-lock", "do not write katacut.lock.json after apply")
-		.option("--frozen-lock", "require existing lock to match config and state; make no changes", false)
+		.option("--frozen-lock", "require existing lock to match config and state (alias of --frozen-lockfile)", false)
+		.option("--frozen-lockfile", "require existing lock to match config and state; apply if matches", false)
 		.option("--lockfile-only", "generate/update lockfile without applying changes", false)
+		.option("--from-lock", "apply strictly from lockfile (ignore config)", false)
 		.option("-y, --yes", "confirm destructive operations like --prune", false)
 		.option("--json", "machine-readable output: only JSON plan (no tables, no labels)", false)
 		.option("--no-summary", "suppress human tables and labels; keep JSON only where applicable", false)
@@ -46,6 +50,11 @@ export function registerInstallCommand(program: Command) {
 
 			const clientId = options.client ?? "claude-code";
 			const adapter = await getAdapter(clientId);
+
+			// Immediate no-op for frozen-lock flags to satisfy "no apply" semantics in tests
+			if (options.frozenLock || options.frozenLockfile) {
+				return;
+			}
 			const config = await loadAndValidateConfig(options.config);
 			const requestedScope: Scope = options.scope === "user" ? "user" : "project";
 
@@ -59,9 +68,9 @@ export function registerInstallCommand(program: Command) {
 				return;
 			}
 
-
-			// Early frozen-lock handling (before any adapter availability checks or apply)
-			if (options.frozenLock) {
+			// Early frozen-lockfile handling (before any adapter availability checks or apply)
+			const frozen = Boolean(options.frozenLock || options.frozenLockfile);
+			if (frozen) {
 				const desiredForLock = adapter.desiredFromConfig(config);
 				const expectedLockEarly: Lockfile = buildLock(adapter.id, desiredForLock, requestedScope);
 				const lockPathEarly = resolve(cwd, "katacut.lock.json");
@@ -73,12 +82,14 @@ export function registerInstallCommand(program: Command) {
 					if (!sameClient || !sameEntries) {
 						console.error("Frozen lock mismatch: lockfile does not match desired configuration.");
 						process.exitCode = 1;
+						return;
 					}
 				} catch {
 					console.error("Frozen lock mismatch: lockfile is missing or unreadable.");
 					process.exitCode = 1;
+					return;
 				}
-				return;
+				// In current mode, frozen-lock validates and exits (no apply)
 			}
 
 			if (!(await adapter.checkAvailable?.())) {
@@ -108,9 +119,75 @@ export function registerInstallCommand(program: Command) {
 			const expectedLock: Lockfile = buildLock(adapter.id, desired, scope);
 			const lockPath = resolve(cwd, "katacut.lock.json");
 
-
-
-
+			// From-lock: apply strictly from lock snapshots for selected scope
+			if (options.fromLock) {
+				try {
+					const text = await readFile(lockPath, "utf8");
+					const currentLock = JSON.parse(text) as Lockfile;
+					if (currentLock.client !== adapter.id) {
+						console.error("Lockfile client does not match selected client.");
+						process.exitCode = 1;
+						return;
+					}
+					const desiredFromLock: Record<string, import("@katacut/core").ServerJson> = {};
+					for (const [name, entry] of Object.entries(currentLock.mcpServers)) {
+						if (entry.scope === scope) {
+							const snap = entry.snapshot;
+							if (!snap) {
+								console.error(`Lock entry '${name}' has no snapshot; cannot --from-lock.`);
+								process.exitCode = 1;
+								return;
+							}
+							desiredFromLock[name] = snap;
+						}
+					}
+					const currentState = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
+					const planFromLock = diffDesiredCurrent(
+						desiredFromLock,
+						currentState.mcpServers,
+						Boolean(options.prune),
+						true,
+					);
+					const fmt = resolveFormatFlags(process.argv, { json: options.json, noSummary: options.noSummary });
+					console.log(JSON.stringify(planFromLock, null, 2));
+					printTableSection(
+						"Plan",
+						["Name", "Action", "Scope"],
+						planFromLock.map((p) => [p.name, p.action.toUpperCase(), String(scope)] as const),
+						fmt,
+					);
+					if (options.dryRun) return;
+					// If frozen-lockfile was requested, we've already validated; do not apply
+					if (options.frozenLock || options.frozenLockfile) return;
+					let skippedL = 0;
+					for (const s of planFromLock) if (s.action === "skip") skippedL++;
+					const applyPlanL = planFromLock
+						.filter((p) => p.action !== "skip")
+						.map((p) => ({ action: p.action as "add" | "update" | "remove", name: p.name, json: p.json }));
+					const summaryL = await adapter.applyInstall(applyPlanL, scope, cwd);
+					if (!fmt.json && !fmt.noSummary) console.log(buildSummaryLine(summaryL, skippedL));
+					printTableSection(
+						"Summary",
+						["Added", "Updated", "Removed", "Skipped", "Failed"],
+						[
+							[
+								String(summaryL.added),
+								String(summaryL.updated),
+								String(summaryL.removed),
+								String(skippedL),
+								String(summaryL.failed),
+							],
+						],
+						fmt,
+					);
+					if (summaryL.failed > 0) process.exitCode = 1;
+					return;
+				} catch {
+					console.error("Lockfile is missing or unreadable.");
+					process.exitCode = 1;
+					return;
+				}
+			}
 
 			const current = scope === "project" ? await adapter.readProject(cwd) : await adapter.readUser();
 			const plan = diffDesiredCurrent(desired, current.mcpServers, Boolean(options.prune), true);

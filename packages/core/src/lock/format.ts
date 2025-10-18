@@ -6,6 +6,7 @@ export interface LockEntry {
     readonly scope: Scope;
     readonly fingerprint: string;
     readonly resolvedVersion?: string;
+    readonly snapshot?: ServerJson;
 }
 export interface Lockfile {
 	readonly version: "1";
@@ -21,7 +22,7 @@ export function computeFingerprint(json: ServerJson): string {
 
 export function buildLock(client: string, desired: Record<string, ServerJson>, scope: Scope): Lockfile {
     const entries: Record<string, LockEntry> = {};
-    for (const [name, json] of Object.entries(desired)) entries[name] = { scope, fingerprint: computeFingerprint(json) };
+    for (const [name, json] of Object.entries(desired)) entries[name] = { scope, fingerprint: computeFingerprint(json), snapshot: json };
     return { version: "1", client, mcpServers: entries };
 }
 
