@@ -7,6 +7,7 @@
 		"build": "pnpm exec tsc -b",
 		"clean": "pnpm -r exec rimraf dist",
 		"lint": "pnpm -r lint",
+		"lint:fix": "biome check --write --unsafe .",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"test:changed": "vitest --changed --changedSince=origin/main",

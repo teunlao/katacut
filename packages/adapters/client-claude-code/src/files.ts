@@ -1,6 +1,6 @@
+import { copyFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-
 import { readTextFile } from '@katacut/utils';
 
 import type { ClaudeServerJson } from './types.js';
@@ -68,6 +68,43 @@ export async function readProjectMcp(cwd = process.cwd()): Promise<ReadMcpResult
 	const parsed = await readJson(path);
 	const servers = extractMcpServers(parsed) ?? {};
 	return { source: servers && Object.keys(servers).length > 0 ? path : undefined, mcpServers: servers };
+}
+
+export async function fallbackRemoveClaude(
+	name: string,
+	scope: 'project' | 'user',
+	cwd = process.cwd(),
+): Promise<boolean> {
+	const candidates: string[] = [];
+	if (scope === 'project') {
+		candidates.push(join(cwd, '.mcp.json'));
+	} else {
+		const home = homedir();
+		const xdg = process.env.XDG_CONFIG_HOME
+			? join(process.env.XDG_CONFIG_HOME, 'claude')
+			: join(home, '.config', 'claude');
+		candidates.push(join(home, '.claude', 'settings.json'));
+		candidates.push(join(home, '.claude.json'));
+		candidates.push(join(xdg, 'settings.json'));
+		candidates.push(join(xdg, 'config.json'));
+		if (process.env.USERPROFILE) candidates.push(join(process.env.USERPROFILE, '.claude', 'settings.json'));
+		if (process.env.USERPROFILE) candidates.push(join(process.env.USERPROFILE, '.claude.json'));
+		if (process.env.APPDATA) candidates.push(join(process.env.APPDATA, 'Claude', 'settings.json'));
+	}
+	for (const path of candidates) {
+		try {
+			const raw = await readTextFile(path);
+			const json = JSON.parse(raw) as { mcpServers?: Record<string, unknown> };
+			if (!json.mcpServers || !(name in json.mcpServers)) continue;
+			await copyFile(path, `${path}.bak`);
+			delete json.mcpServers[name];
+			await writeFile(path, JSON.stringify(json, null, 2), 'utf8');
+			return true;
+		} catch {
+			// ignore and continue
+		}
+	}
+	return false;
 }
 
 export async function readUserMcp(): Promise<ReadMcpResult> {

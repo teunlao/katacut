@@ -28,7 +28,13 @@ export function registerLockCommand(program: Command) {
 			const adapters = await Promise.all(clients.map((c: string) => getAdapter(c)));
 			const config = await loadAndValidateConfig(opts.config);
 			// общий снимок один для всех клиентов
-			const desired = adapters[0].desiredFromConfig(config);
+			const desiredRaw = adapters[0].desiredFromConfig(config);
+			const desired: Record<string, import('@katacut/core').ServerJson> = {};
+			for (const [k, v] of Object.entries(desiredRaw)) {
+				if (v.type === 'http' && v.headers && Object.keys(v.headers).length === 0) {
+					desired[k] = { type: 'http', url: v.url };
+				} else desired[k] = v;
+			}
 			const scope: Scope = opts.scope === 'user' ? 'user' : 'project';
 			const lock = buildLock(clients, desired, scope);
 			if (opts.out) {

@@ -1,3 +1,4 @@
+import { copyFile, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import type { ReadMcpResult } from '@katacut/core';
@@ -63,4 +64,28 @@ export async function readUserGemini(): Promise<ReadMcpResult> {
 		if (servers && Object.keys(servers).length > 0) return { source: file, mcpServers: servers };
 	}
 	return { mcpServers: {} };
+}
+
+export async function fallbackRemoveGemini(
+	name: string,
+	scope: 'project' | 'user',
+	cwd = process.cwd(),
+): Promise<boolean> {
+	const path =
+		scope === 'project' ? join(cwd, '.gemini', 'settings.json') : join(homedir(), '.gemini', 'settings.json');
+	const parsed = await readJson(path);
+	if (!parsed || !isObject(parsed)) return false;
+	const root = parsed as Record<string, unknown>;
+	const servers = root.mcpServers;
+	if (!servers || !isObject(servers)) return false;
+	if (!(name in servers)) return false;
+	try {
+		await copyFile(path, `${path}.bak`);
+		const obj = servers as Record<string, unknown>;
+		delete obj[name];
+		await writeFile(path, JSON.stringify(root, null, 2), 'utf8');
+		return true;
+	} catch {
+		return false;
+	}
 }

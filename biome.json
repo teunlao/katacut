@@ -13,6 +13,9 @@
 		"rules": {
 			"correctness": {
 				"noUnusedVariables": "warn"
+			},
+			"suspicious": {
+				"noExplicitAny": "error"
 			}
 		}
 	},

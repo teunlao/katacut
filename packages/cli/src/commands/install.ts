@@ -73,7 +73,13 @@ export function registerInstallCommand(program: Command) {
 
 			// Lockfile-only: generate/refresh lock strictly from desired state without apply
 			if (options.lockfileOnly) {
-				const desiredForLock = adapters[0].desiredFromConfig(config);
+				const tmpDesired = adapters[0].desiredFromConfig(config);
+				const desiredForLock: Record<string, import('@katacut/core').ServerJson> = {};
+				for (const [k, v] of Object.entries(tmpDesired)) {
+					if (v.type === 'http' && v.headers && Object.keys(v.headers).length === 0)
+						desiredForLock[k] = { type: 'http', url: v.url };
+					else desiredForLock[k] = v;
+				}
 				const expectedLock: Lockfile = buildLock(targetClients, desiredForLock, requestedScope);
 				const lockPath = resolve(process.cwd(), 'katacut.lock.json');
 				if (options.frozenLock || options.frozenLockfile) {
@@ -110,7 +116,14 @@ export function registerInstallCommand(program: Command) {
 			// Frozen-lockfile: validate lock against desired; if match → apply strictly from lock; never write lock
 			const frozen = Boolean(options.frozenLock || options.frozenLockfile);
 			if (frozen) {
-				const desiredForLock = adapters[0].desiredFromConfig(config);
+				const tmpDesired2 = adapters[0].desiredFromConfig(config);
+				const desiredForLock = Object.fromEntries(
+					Object.entries(tmpDesired2).map(([k, v]) =>
+						v.type === 'http' && v.headers && Object.keys(v.headers).length === 0
+							? [k, { type: 'http', url: v.url }]
+							: [k, v],
+					),
+				) as Record<string, import('@katacut/core').ServerJson>;
 				const expectedLockEarly: Lockfile = buildLock(targetClients, desiredForLock, requestedScope);
 				const lockPathEarly = resolve(cwd, 'katacut.lock.json');
 				let currentLock: Lockfile | undefined;
@@ -183,7 +196,13 @@ export function registerInstallCommand(program: Command) {
 				return;
 			}
 
-			const desired = adapters[0].desiredFromConfig(config);
+			const desiredTmp = adapters[0].desiredFromConfig(config);
+			const desired: Record<string, import('@katacut/core').ServerJson> = {};
+			for (const [k, v] of Object.entries(desiredTmp)) {
+				if (v.type === 'http' && v.headers && Object.keys(v.headers).length === 0)
+					desired[k] = { type: 'http', url: v.url };
+				else desired[k] = v;
+			}
 
 			// For lock building we use requested scope (common for all clients)
 			const scope: Scope = requestedScope;
@@ -376,8 +395,8 @@ export function registerInstallCommand(program: Command) {
 			// State лог: упрощённо — только суммарная запись по последнему плану недоступна без хранения по клиентам;
 			// оставляем как есть в предыдущей реализации (опционально расширим позже).
 
-			// Write lock by default (unless suppressed) after successful apply (skip when --local)
-			if (!options.local && options.writeLock !== false && totalFailed === 0) {
+			// Write lock by default (unless suppressed) after successful apply (skip when --local or --dry-run)
+			if (!options.local && options.writeLock !== false && totalFailed === 0 && !options.dryRun) {
 				try {
 					const prevText = await readFile(lockPath, 'utf8');
 					const prev = JSON.parse(prevText) as Lockfile;

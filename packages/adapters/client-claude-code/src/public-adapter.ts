@@ -1,7 +1,7 @@
 import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from '@katacut/core';
 import type { KatacutConfig, McpServerConfig } from '@katacut/schema';
 import { addOrUpdateClaudeServer, ensureClaudeAvailable, removeClaudeServer } from './cli.js';
-import { readProjectMcp, readUserMcp } from './files.js';
+import { fallbackRemoveClaude, readProjectMcp, readUserMcp } from './files.js';
 import { toClaudeServerJson } from './map.js';
 
 export const claudeCodeAdapter: ClientAdapter = {
@@ -36,8 +36,17 @@ export const claudeCodeAdapter: ClientAdapter = {
 			try {
 				if (step.action === 'remove') {
 					const r = await removeClaudeServer(step.name, scope, cwd);
-					if (r.code === 0) removed++;
-					else failed++;
+					// Verify removal; if still present, fallback clean
+					const state = scope === 'project' ? await readProjectMcp(cwd) : await readUserMcp();
+					if (state.mcpServers[step.name]) {
+						const cleaned = await fallbackRemoveClaude(step.name, scope, cwd);
+						if (cleaned) removed++;
+						else failed++;
+					} else if (r.code === 0) {
+						removed++;
+					} else {
+						failed++;
+					}
 				} else {
 					const json = step.json;
 					if (!json) {

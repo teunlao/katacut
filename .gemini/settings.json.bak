@@ -13,6 +13,9 @@
     },
     "memory-journal-mcp": {
       "httpUrl": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp"
+    },
+    "extra": {
+      "httpUrl": "https://extra"
     }
   }
 }

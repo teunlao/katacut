@@ -1,35 +1,38 @@
 {
-	"version": "1",
-	"client": "gemini-cli",
-	"mcpServers": {
-		"mcp-server-filesystem": {
-			"scope": "project",
-			"fingerprint": "3dc3d1aa36165196ddc93fc8fa6a23eeb0f539f03ef323c4eb9668d20ee0848b",
-			"snapshot": {
-				"type": "stdio",
-				"command": "npx",
-				"args": ["-y", "@agent-infra/mcp-server-filesystem"]
-			}
-		},
-		"memory-mcp": {
-			"scope": "project",
-			"fingerprint": "4da3777b49fd4ebc045d9f78e78999d6e190abc0f30110259f2367bd9c747a8f",
-			"snapshot": {
-				"type": "stdio",
-				"command": "npx",
-				"args": ["-y", "@letta-ai/memory-mcp@2.0.2"]
-			}
-		},
-		"neverinfamous-memory-journal-mcp": {
-			"scope": "project",
-			"fingerprint": "fcd3f7ffef6c04175273c4f0507d31b2e727d351eb24122c834d06fa75ce91fb",
-			"snapshot": {
-				"type": "http",
-				"url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp",
-				"headers": {
-					"Authorization": "Bearer {smithery_api_key}"
-				}
-			}
-		}
-	}
+  "version": "1",
+  "clients": [
+    "claude-code",
+    "gemini-cli"
+  ],
+  "mcpServers": {
+    "github": {
+      "scope": "project",
+      "fingerprint": "8f4fd06487196c8f12eeebdb6d1eed88688da04bbffcdb7d72a1c29eb38d963a",
+      "snapshot": {
+        "type": "http",
+        "url": "https://api.githubcopilot.com/mcp"
+      }
+    },
+    "fs": {
+      "scope": "project",
+      "fingerprint": "eeb53e47d00b15bc19e4cbcd153baec81343a0264854cf6a87a1c54ec51e8a5b",
+      "snapshot": {
+        "type": "stdio",
+        "command": "npx",
+        "args": [
+          "-y",
+          "@modelcontextprotocol/server-filesystem",
+          "."
+        ]
+      }
+    },
+    "memory-journal-mcp": {
+      "scope": "project",
+      "fingerprint": "2ba277a65d3dca7a47b2cb8ec75a0221b608670028b7ac96626aea965e5f9ebc",
+      "snapshot": {
+        "type": "http",
+        "url": "https://server.smithery.ai/@neverinfamous/memory-journal-mcp/mcp"
+      }
+    }
+  }
 }

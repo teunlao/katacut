@@ -1,7 +1,7 @@
 import type { ApplyResultSummary, ClientAdapter, InstallStep, ReadMcpResult, Scope, ServerJson } from '@katacut/core';
 import type { KatacutConfig, McpServerConfig } from '@katacut/schema';
 import { addOrUpdateGeminiServer, ensureGeminiAvailable, removeGeminiServer } from './cli.js';
-import { readProjectGemini, readUserGemini } from './files.js';
+import { fallbackRemoveGemini, readProjectGemini, readUserGemini } from './files.js';
 import { toGeminiServerJson } from './map.js';
 
 export const geminiCliAdapter: ClientAdapter = {
@@ -27,8 +27,12 @@ export const geminiCliAdapter: ClientAdapter = {
 		for (const name of Object.keys(src)) {
 			const gj = toGeminiServerJson(src[name]);
 			// normalize gemini json back to our ServerJson
-			if (gj.type === 'stdio') out[name] = { type: 'stdio', command: gj.command, args: gj.args, env: gj.env };
-			else out[name] = { type: 'http', url: gj.httpUrl, headers: gj.headers };
+			if (gj.type === 'stdio') {
+				out[name] = { type: 'stdio', command: gj.command, args: gj.args, env: gj.env };
+			} else {
+				const headers = gj.headers && Object.keys(gj.headers).length === 0 ? undefined : gj.headers;
+				out[name] = { type: 'http', url: gj.httpUrl, headers };
+			}
 		}
 		return out;
 	},
@@ -41,8 +45,16 @@ export const geminiCliAdapter: ClientAdapter = {
 			try {
 				if (step.action === 'remove') {
 					const r = await removeGeminiServer(step.name, scope, cwd);
-					if (r.code === 0) removed++;
-					else failed++;
+					const state = scope === 'project' ? await readProjectGemini(cwd) : await readUserGemini();
+					if (state.mcpServers[step.name]) {
+						const cleaned = await fallbackRemoveGemini(step.name, scope, cwd);
+						if (cleaned) removed++;
+						else failed++;
+					} else if (r.code === 0) {
+						removed++;
+					} else {
+						failed++;
+					}
 				} else {
 					const json = step.json;
 					if (!json) {
